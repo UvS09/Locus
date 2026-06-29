@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Sign in | Locus{% endblock %}
+
+{% block content %}
+<section class="login-shell">
+    <div class="login-story">
+        <div class="login-brand">
+            <img src="{{ url_for('static', path='/img/locus-mark.svg') }}" alt="Locus logo">
+            <span>Locus</span>
+        </div>
+        <div>
+            <p class="login-kicker">TEAMS. IN. SYNC.</p>
+            <h1>Clarity from project to action.</h1>
+        </div>
+        <div class="login-honda">
+            <img src="{{ url_for('static', path='/img/honda-wing-red.png') }}" alt="Honda">
+            <span>HMSI Internal Workspace</span>
+        </div>
+        </div>
+
+    <div class="login-panel">
+        <div class="login-card">
+            <h2>Sign in to Locus</h2>
+            <form method="post" action="/login" class="login-form">
+                <div>
+                    <label class="form-label" for="email">Email</label>
+                    <input class="form-control" id="email" type="email" name="email" value="{{ form_email or '' }}" placeholder="name@honda.hmsi.in" autocomplete="email" required>
+                </div>
+                <div>
+                    <label class="form-label" for="password">Password</label>
+                    <input class="form-control" id="password" type="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+                    <div class="forgot-row">
+                        <a href="/forgot-password">Forgot password?</a>
+                    </div>
+                </div>
+                <div class="login-options">
+                    <label class="remember-toggle" for="rememberMe">
+                        <input type="checkbox" name="remember_me" value="true" id="rememberMe">
+                        <span class="remember-box"><i class="bi bi-check"></i></span>
+                        <span>Keep me signed in</span>
+                    </label>
+                </div>
+                <button class="btn login-submit" type="submit">Sign In <i class="bi bi-arrow-right"></i></button>
+            </form>
+            {% if can_signup %}
+                <div class="login-bootstrap">
+                    <span>Setting up this server?</span>
+                    <a href="/signup">Create local admin</a>
+                </div>
+            {% endif %}
+            <div class="login-footer-note">
+                <p>Access is limited to authorized HMSI personnel.</p>
+                <div>
+                    <span>Locus v1.0</span>
+                    <a href="/privacy">Privacy policy</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

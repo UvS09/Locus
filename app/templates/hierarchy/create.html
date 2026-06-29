@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Create Work Item{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <div>
+        <h1 class="mb-2">Create Work</h1>
+    </div>
+</section>
+
+<section class="form-panel mt-4 wide-form-panel">
+    <form method="get" action="/create" class="filter-bar mb-4">
+        <select class="form-select" name="level" onchange="this.form.submit()">
+            {% for level in create_levels %}
+                <option value="{{ level.value }}" {% if level == selected_level %}selected{% endif %}>{{ level_titles[level] }}</option>
+            {% endfor %}
+        </select>
+        <noscript><button class="btn btn-outline-secondary" type="submit">Switch</button></noscript>
+    </form>
+
+    <form method="post" action="/create" class="stack-form">
+        <input type="hidden" name="level" value="{{ selected_level.value }}">
+        <input class="form-control" name="title" placeholder="{{ level_titles[selected_level] }} title" required>
+        <textarea class="form-control" name="description" placeholder="Description"></textarea>
+
+        {% if selected_level.value in ['WORKSTREAM', 'ACTIVITY', 'TASK'] %}
+            <select class="form-select" name="objective_id" {% if selected_level.value == 'WORKSTREAM' %}required{% endif %}>
+                <option value="">Select Project</option>
+                {% for objective in objectives %}
+                    <option value="{{ objective.id }}">{{ objective.title }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
+        {% if selected_level.value in ['ACTIVITY', 'TASK'] %}
+            <select class="form-select" name="workstream_id" {% if selected_level.value == 'ACTIVITY' %}required{% endif %}>
+                <option value="">Select Milestone</option>
+                {% for workstream in workstreams %}
+                    <option value="{{ workstream.id }}">{{ workstream.title }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
+        {% if selected_level.value in ['TASK'] %}
+            <select class="form-select" name="activity_id" {% if selected_level.value == 'TASK' %}required{% endif %}>
+                <option value="">Select Activity</option>
+                {% for activity in activities %}
+                    <option value="{{ activity.id }}">{{ activity.title }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
+        <div class="owner-lock">
+            <span>{{ level_titles[selected_level] }} owner</span>
+            <strong>{{ current_user.full_name }}</strong>
+            <small>The creator automatically becomes the owner.</small>
+        </div>
+
+        <div class="two-up">
+            <select class="form-select" name="priority">
+                {% for priority in priorities %}
+                    <option value="{{ priority }}">{{ priority.value }}</option>
+                {% endfor %}
+            </select>
+            <input class="form-control" type="date" name="due_date">
+        </div>
+
+        <button class="btn app-btn-primary align-self-start" type="submit">Create {{ level_titles[selected_level] }}</button>
+    </form>
+</section>
+{% endblock %}

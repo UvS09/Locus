@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Manager Dashboard{% endblock %}
+
+{% block content %}
+<header class="dashboard-greeting">
+    <h1>Welcome back, {{ current_user.full_name }}</h1>
+</header>
+
+{% if not stats %}
+    <div class="alert alert-warning mt-3">Assign this manager to a team before using the dashboard.</div>
+{% else %}
+    <section class="snapshot-strip mt-3" aria-label="Team snapshots">
+        <a class="snapshot-beacon beacon-members" href="/manager/team-members">
+            <span class="beacon-pulse"></span>
+            <strong>{{ stats.snapshots.active_members }}</strong>
+            <span>Members Active</span>
+        </a>
+        <a class="snapshot-beacon beacon-projects" href="/objectives">
+            <span class="beacon-pulse"></span>
+            <strong>{{ stats.snapshots.active_projects }}</strong>
+            <span>Active Projects</span>
+        </a>
+        <a class="snapshot-beacon beacon-open" href="/manager/tasks">
+            <span class="beacon-pulse"></span>
+            <strong>{{ stats.snapshots.open_work }}</strong>
+            <span>Open Work Items</span>
+        </a>
+        <a class="snapshot-beacon beacon-complete" href="/manager/tasks?status=COMPLETED">
+            <span class="beacon-pulse"></span>
+            <strong>{{ stats.snapshots.completed_today }}</strong>
+            <span>Completed Today</span>
+        </a>
+    </section>
+
+    <section class="metrics-grid dashboard-metrics mt-3">
+        <a class="metric-card metric-link" href="/objectives"><span>Projects</span><strong>{{ stats.objective_count }}</strong></a>
+        <a class="metric-card metric-link" href="/objectives"><span>Project Progress</span><strong>{{ stats.objective_progress }}%</strong></a>
+    </section>
+
+    <section class="dashboard-alert-grid mt-3">
+        <section class="form-panel">
+            <div class="section-heading">
+                <div>
+                    <h2>Blocked Work</h2>
+                </div>
+                <a class="section-link" href="/manager/tasks?status=BLOCKED">View all</a>
+            </div>
+            <div class="list-stack">
+                {% for item in stats.blocked_items %}
+                    <a class="list-row linked-row" href="{{ detail_paths[item.level].format(id=item.id) }}">
+                        <span>{{ item.title }}</span>
+                        <span class="status-badge status-blocked">BLOCKED</span>
+                    </a>
+                {% else %}
+                    <p class="text-secondary mb-0">No blocked work items.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="form-panel">
+            <div class="section-heading">
+                <div>
+                    <h2>Overdue Work</h2>
+                </div>
+                <a class="section-link" href="/manager/tasks?overdue=true">View all</a>
+            </div>
+            <div class="list-stack">
+                {% for item in stats.overdue_items %}
+                    <a class="list-row linked-row" href="{{ detail_paths[item.level].format(id=item.id) }}">
+                        <span>{{ item.title }}</span>
+                        <span class="status-badge status-overdue">{{ item.due_date|long_date }}</span>
+                    </a>
+                {% else %}
+                    <p class="text-secondary mb-0">No overdue work items.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </section>
+
+    <section class="table-panel dashboard-recent-updates mt-3">
+        <div class="section-heading">
+            <div>
+                <h2>Recent Updates</h2>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table enterprise-table align-middle">
+                <thead>
+                    <tr>
+                        <th>Created / Updated</th>
+                        <th>Category</th>
+                        <th>Project Path</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>Owner</th>
+                        <th>Last Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in stats.recent_updates %}
+                        {% set task_overdue = task.due_date and task.due_date < today and task.status.value not in ['COMPLETED', 'CLOSED'] %}
+                        <tr>
+                            <td><a class="table-title" href="{{ detail_paths[task.level].format(id=task.id) }}">{{ task.title }}</a></td>
+                            <td>{{ task.category_label }}</td>
+                            <td>{{ task.project_path }}</td>
+                            <td><span class="status-badge {% if task_overdue %}status-overdue{% else %}status-{{ task.status.value|lower }}{% endif %}">{% if task_overdue %}OVERDUE{% else %}{{ task.status.value.replace('_', ' ') }}{% endif %}</span></td>
+                            <td>{{ task.progress_percent }}%</td>
+                            <td>{{ task.assignee.full_name if task.assignee else "Unassigned" }}</td>
+                            <td class="date-cell">{{ task.updated_at|long_date }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="7" class="empty-table">No updates yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+{% endif %}
+{% endblock %}

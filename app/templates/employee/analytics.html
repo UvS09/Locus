@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block content %}
+<section class="admin-command-hero">
+    <div>
+        <h1>My Analytics</h1>
+    </div>
+</section>
+
+<section class="metrics-grid mt-4">
+    <article class="metric-card"><span>Assigned Work</span><strong>{{ stats.totals.assigned }}</strong></article>
+    <article class="metric-card"><span>Open Work</span><strong>{{ stats.totals.open }}</strong></article>
+    <article class="metric-card"><span>Blocked</span><strong>{{ stats.totals.blocked }}</strong></article>
+    <article class="metric-card"><span>Overdue</span><strong>{{ stats.totals.overdue }}</strong></article>
+</section>
+
+<section class="manager-report-grid mt-4">
+    <article class="table-panel report-chart-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Work Status Mix</h2>
+            </div>
+        </div>
+        <div class="donut-report-wrap">
+            <div class="report-donut" style="--segments: {{ stats.status_chart }};">
+                <span>{{ stats.status_total }}</span>
+                <small>Total</small>
+            </div>
+            <div class="chart-legend">
+                {% for label, count in stats.status_counts.items() %}
+                    <div><span class="legend-dot legend-{{ label|lower|replace(' ', '-') }}"></span>{{ label }} <strong>{{ count }}</strong></div>
+                {% endfor %}
+            </div>
+        </div>
+    </article>
+
+    <article class="table-panel report-chart-panel">
+        <div class="section-heading">
+            <div>
+                <h2>My Progress</h2>
+            </div>
+        </div>
+        <div class="personal-progress-card">
+            <strong>{{ stats.totals.completion_rate }}%</strong>
+            <span>Completed work</span>
+            <div class="progress compact-progress">
+                <div class="progress-bar status-progress-completed" style="width: {{ stats.totals.completion_rate }}%"></div>
+            </div>
+            <div class="personal-progress-meta">
+                <span>{{ stats.totals.completed }} completed</span>
+                <span>{{ stats.totals.avg_progress }}% avg progress</span>
+            </div>
+        </div>
+    </article>
+</section>
+
+<section class="table-panel mt-4">
+    <div class="section-heading">
+        <div>
+            <h2>My Work Items</h2>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table enterprise-table align-middle">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Due Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in stats.work_items %}
+                    {% set item_overdue = item.due_date and item.due_date < today and item.status.value not in ['COMPLETED', 'CLOSED'] %}
+                    <tr>
+                        <td><a class="table-title" href="{{ detail_paths[item.level].format(id=item.id) }}">{{ item.title }}</a></td>
+                        <td><span class="status-badge {% if item_overdue %}status-overdue{% else %}status-{{ item.status.value|lower }}{% endif %}">{% if item_overdue %}OVERDUE{% else %}{{ item.status.value.replace('_', ' ') }}{% endif %}</span></td>
+                        <td>
+                            <div class="progress-cell">
+                                <strong>{{ item.progress_percent }}%</strong>
+                                <div class="progress compact-progress {% if item.status.value == 'BLOCKED' %}progress-is-blocked{% endif %}">
+                                    <div class="progress-bar status-progress-{% if item_overdue %}overdue{% else %}{{ item.status.value|lower }}{% endif %}" style="width: {{ item.progress_percent }}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="date-cell">{{ item.due_date|long_date }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="4" class="empty-table">No assigned work items yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

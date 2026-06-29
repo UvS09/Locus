@@ -1,0 +1,246 @@
+body {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(24, 126, 180, 0.2), transparent 32%),
+        linear-gradient(180deg, #f8fbfd 0%, #edf3f7 100%);
+    color: #172b4d;
+}
+
+.nav-shell {
+    background: linear-gradient(90deg, #172b4d, #0052cc);
+    box-shadow: 0 8px 24px rgba(18, 52, 77, 0.18);
+}
+
+.hero-panel {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 247, 253, 0.95));
+    box-shadow: 0 18px 50px rgba(18, 52, 77, 0.12);
+}
+
+.stat-card {
+    background: #fff;
+    border-radius: 1.25rem;
+    box-shadow: 0 12px 30px rgba(18, 52, 77, 0.08);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.stat-card span {
+    color: #5a7284;
+    font-size: 0.9rem;
+}
+
+.stat-card strong {
+    font-size: 2rem;
+    color: #12344d;
+}
+
+.task-card {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(18, 52, 77, 0.08);
+    border-radius: 1.25rem;
+    padding: 1.25rem;
+    box-shadow: 0 10px 24px rgba(18, 52, 77, 0.06);
+}
+
+.jira-card {
+    border-left: 4px solid #0052cc;
+}
+
+.page-hero {
+    background: linear-gradient(135deg, #172b4d, #0052cc);
+    color: #fff;
+    border-radius: 1.4rem;
+    padding: 1.6rem 1.8rem;
+    box-shadow: 0 18px 40px rgba(23, 43, 77, 0.18);
+}
+
+.page-hero h1,
+.page-hero p {
+    color: #fff !important;
+}
+
+.eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.75rem;
+    opacity: 0.85;
+}
+
+.meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: #eef4ff;
+    color: #172b4d;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.25rem 0.6rem;
+}
+
+.progress {
+    background: #dfe1e6;
+    height: 0.5rem;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, #0052cc, #2684ff);
+}
+
+.app-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 250px 1fr;
+}
+
+.app-sidebar {
+    background: #0f2747;
+    color: #fff;
+    padding: 1.5rem 1rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+
+.sidebar-brand {
+    display: block;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+    margin-bottom: 1.5rem;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.sidebar-nav a {
+    color: rgba(255, 255, 255, 0.82);
+    text-decoration: none;
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.8rem;
+}
+
+.sidebar-nav a:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.app-main {
+    min-width: 0;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: rgba(255, 255, 255, 0.9);
+    border-bottom: 1px solid rgba(15, 39, 71, 0.08);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(12px);
+}
+
+.topbar-search {
+    flex: 1;
+    max-width: 520px;
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.notification-bell {
+    color: #172b4d;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.app-content {
+    padding: 1.5rem;
+}
+
+.kanban-shell {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(220px, 1fr));
+    gap: 1rem;
+    overflow-x: auto;
+}
+
+.kanban-column {
+    background: #f4f5f7;
+    border-radius: 1rem;
+    padding: 0.9rem;
+}
+
+.kanban-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+    font-weight: 700;
+}
+
+.kanban-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.kanban-card {
+    background: #fff;
+    border-radius: 0.9rem;
+    border: 1px solid rgba(15, 39, 71, 0.08);
+    box-shadow: 0 8px 18px rgba(15, 39, 71, 0.06);
+    padding: 0.9rem;
+}
+
+.empty-card,
+.empty-state {
+    background: #fff;
+    border: 1px dashed rgba(15, 39, 71, 0.16);
+    border-radius: 1rem;
+    padding: 1rem;
+}
+
+.timeline-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.timeline-item {
+    border-left: 3px solid #2684ff;
+    padding-left: 0.9rem;
+}
+
+@media (max-width: 991px) {
+    .app-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .app-sidebar {
+        position: static;
+        height: auto;
+    }
+
+    .topbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

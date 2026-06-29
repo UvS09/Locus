@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Sub-tasks{% endblock %}
+
+{% block content %}
+<section class="table-panel">
+    <div class="section-heading">
+        <div>
+            <h1>Sub-tasks</h1>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table enterprise-table align-middle">
+            <thead>
+                <tr>
+                    <th>Sub-task</th>
+                    <th>Parent Task</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Assignee</th>
+                    <th>Due Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subtask in subtasks %}
+                    <tr>
+                        <td>
+                            <div class="table-title">{{ subtask.title }}</div>
+                            <div class="table-subtitle">{{ subtask.description or "No description provided." }}</div>
+                        </td>
+                        <td><a class="table-title" href="/tasks/{{ subtask.parent_id }}">{{ subtask.parent.title if subtask.parent else "Open task" }}</a></td>
+                        <td><span class="status-badge status-{{ subtask.status.value|lower }}">{{ subtask.status.value.replace('_', ' ') }}</span></td>
+                        <td><span class="priority-badge priority-{{ subtask.priority.value|lower }}">{{ subtask.priority.value }}</span></td>
+                        <td>{{ subtask.assignee.full_name if subtask.assignee else "Unassigned" }}</td>
+                        <td class="date-cell">{{ subtask.due_date|long_date }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="6" class="empty-table">No sub-tasks found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

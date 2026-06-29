@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Employee Analytics{% endblock %}
+
+{% block content %}
+<section class="admin-command-hero">
+    <div>
+        <h1>Employee Analytics</h1>
+    </div>
+    {% if stats %}
+        <a class="btn app-btn-primary" href="/manager/reports/export"><i class="bi bi-file-earmark-spreadsheet"></i> Download Excel</a>
+    {% endif %}
+</section>
+
+{% if stats %}
+<section class="metrics-grid mt-4">
+    <article class="metric-card"><span>Assigned Work</span><strong>{{ stats.totals.assigned }}</strong></article>
+    <article class="metric-card"><span>Open Work</span><strong>{{ stats.totals.open }}</strong></article>
+    <article class="metric-card"><span>Blocked</span><strong>{{ stats.totals.blocked }}</strong></article>
+    <article class="metric-card"><span>Overdue</span><strong>{{ stats.totals.overdue }}</strong></article>
+</section>
+
+<section class="manager-report-grid mt-4">
+    <article class="table-panel report-chart-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Work Status Mix</h2>
+            </div>
+        </div>
+        <div class="donut-report-wrap">
+            <div class="report-donut" style="--segments: {{ stats.status_chart }};">
+                <span>{{ stats.status_total }}</span>
+                <small>Total</small>
+            </div>
+            <div class="chart-legend">
+                {% for label, count in stats.status_counts.items() %}
+                    <div><span class="legend-dot legend-{{ label|lower|replace(' ', '-') }}"></span>{{ label }} <strong>{{ count }}</strong></div>
+                {% endfor %}
+            </div>
+        </div>
+    </article>
+
+    <article class="table-panel report-chart-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Top Completion</h2>
+            </div>
+        </div>
+        <div class="bar-report-list">
+            {% for row in stats.top_completed %}
+                <div class="bar-report-row">
+                    <span>{{ row.employee.full_name }}</span>
+                    <div class="bar-track"><div class="bar-fill bar-fill-red" style="width: {{ row.completion_rate }}%"></div></div>
+                    <strong>{{ row.completed }}</strong>
+                </div>
+            {% else %}
+                <p class="text-secondary mb-0">No completion data yet.</p>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+
+<section class="table-panel mt-4">
+    <div class="section-heading">
+        <div>
+            <h2>Employee Workload Analytics</h2>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table enterprise-table align-middle">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Assigned</th>
+                    <th>Open</th>
+                    <th>In Progress</th>
+                    <th>Blocked</th>
+                    <th>Overdue</th>
+                    <th>Completed</th>
+                    <th>Completion</th>
+                    <th>Avg Progress</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in stats.employees %}
+                    <tr>
+                        <td>
+                            <strong>{{ row.employee.full_name }}</strong>
+                            <div class="table-subtitle">{{ row.employee.email }}</div>
+                        </td>
+                        <td>{{ row.assigned }}</td>
+                        <td>{{ row.open }}</td>
+                        <td>{{ row.in_progress }}</td>
+                        <td><span class="status-badge status-blocked">{{ row.blocked }}</span></td>
+                        <td><span class="status-badge status-overdue">{{ row.overdue }}</span></td>
+                        <td>{{ row.completed }}</td>
+                        <td>
+                            <div class="progress-cell">
+                                <strong>{{ row.completion_rate }}%</strong>
+                                <div class="progress compact-progress"><div class="progress-bar status-progress-completed" style="width: {{ row.completion_rate }}%"></div></div>
+                            </div>
+                        </td>
+                        <td>{{ row.avg_progress }}%</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="9" class="empty-table">No employee analytics available yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

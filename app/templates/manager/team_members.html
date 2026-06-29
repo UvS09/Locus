@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Team Members{% endblock %}
+
+{% block content %}
+<section class="table-panel">
+    <div class="section-heading">
+        <div>
+            <h1>Team Members</h1>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table enterprise-table align-middle">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+            <tbody>
+                {% for employee in employees %}
+                    <tr>
+                        <td>{{ employee.full_name }}</td>
+                        <td>{{ employee.email }}</td>
+                        <td>{{ employee.display_role }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="3" class="empty-table">No team members assigned.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

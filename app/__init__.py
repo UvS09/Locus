@@ -1,0 +1,1 @@
+"""Locus work management application."""

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Users{% endblock %}
+
+{% block content %}
+<section class="admin-command-hero">
+    <div>
+        <h1>Manage Users & Roles</h1>
+    </div>
+    <a class="btn app-btn-primary" href="/admin/dashboard"><i class="bi bi-speedometer2"></i> Admin Dashboard</a>
+</section>
+
+<section class="admin-user-actions mt-4">
+    <article class="form-panel admin-action-card">
+        <div class="section-heading">
+            <div>
+                <h2>Create User</h2>
+            </div>
+        </div>
+        <form method="post" action="/admin/users" class="stack-form">
+            <div class="two-up">
+                <input class="form-control" name="full_name" placeholder="Full name" required>
+                <input class="form-control" type="email" name="email" placeholder="Email" required>
+            </div>
+            <div class="two-up">
+                <select class="form-select" name="role_key" required>
+                    {% for role in role_options %}
+                        <option value="{{ role.value }}">{{ role.label }}{% if role.value.startswith('custom:') %} ({{ role.access_level }} access){% endif %}</option>
+                    {% endfor %}
+                </select>
+                <select class="form-select" name="team_id">
+                    <option value="">No team</option>
+                    {% for team in teams %}<option value="{{ team.id }}">{{ team.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <button class="btn app-btn-primary" type="submit">Create User</button>
+        </form>
+    </article>
+
+    <article class="form-panel admin-action-card">
+        <div class="section-heading">
+            <div>
+                <h2>Create Role</h2>
+            </div>
+        </div>
+        <form method="post" action="/admin/roles" class="stack-form">
+            <input class="form-control" name="name" placeholder="Role name, e.g. Supervisor" required>
+            <select class="form-select" name="access_level" required>
+                {% for role in roles %}<option value="{{ role }}">{{ role }} access</option>{% endfor %}
+            </select>
+            <textarea class="form-control" name="description" rows="3" placeholder="Optional description"></textarea>
+            <button class="btn app-btn-primary" type="submit">Create Role</button>
+        </form>
+    </article>
+</section>
+
+<section class="admin-role-strip mt-4">
+    <article>
+        <span>System Roles</span>
+        <strong>ADMIN, MANAGER, EMPLOYEE</strong>
+    </article>
+    <article>
+        <span>Custom Roles</span>
+        <strong>{{ custom_roles|length }}</strong>
+    </article>
+    <article>
+        <span>Available Teams</span>
+        <strong>{{ teams|length }}</strong>
+    </article>
+</section>
+
+<section class="table-panel admin-users-table mt-4">
+    <div class="section-heading">
+        <div>
+            <h1>Manage Users</h1>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table enterprise-table align-middle">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Access</th><th>Team</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for user in users %}
+                    <tr>
+                        <td>{{ user.full_name }}</td>
+                        <td>{{ user.email }}</td>
+                        <td><span class="role-pill">{{ user.display_role }}</span></td>
+                        <td>{{ user.role }}</td>
+                        <td>{{ user.team.name if user.team else "-" }}</td>
+                        <td>{{ "Active" if user.is_active else "Inactive" }}</td>
+                        <td>
+                            <details class="admin-row-details">
+                                <summary>Edit</summary>
+                                <form method="post" action="/admin/users/{{ user.id }}" class="mt-2 stack-form compact-form">
+                                    <input class="form-control form-control-sm" name="full_name" value="{{ user.full_name }}" required>
+                                    <select class="form-select form-select-sm" name="role_key" required>
+                                        {% for role in role_options %}
+                                            {% set selected_role = ('custom:' ~ user.custom_role_id) if user.custom_role_id else ('system:' ~ user.role) %}
+                                            <option value="{{ role.value }}" {% if role.value == selected_role %}selected{% endif %}>
+                                                {{ role.label }}{% if role.value.startswith('custom:') %} ({{ role.access_level }} access){% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <select class="form-select form-select-sm" name="team_id">
+                                        <option value="">No team</option>
+                                        {% for team in teams %}<option value="{{ team.id }}" {% if user.team_id == team.id %}selected{% endif %}>{{ team.name }}</option>{% endfor %}
+                                    </select>
+                                    <label class="form-check"><input class="form-check-input" type="checkbox" name="is_active" value="true" {% if user.is_active %}checked{% endif %}> Active</label>
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Save</button>
+                                </form>
+                                <form method="post" action="/admin/users/{{ user.id }}/deactivate" class="mt-2">
+                                    <button class="btn btn-sm btn-outline-danger" type="submit">Deactivate</button>
+                                </form>
+                                {% if allow_impersonation and user.role != "ADMIN" %}
+                                    <form method="post" action="/admin/users/{{ user.id }}/impersonate" class="mt-2">
+                                        <button class="btn btn-sm btn-outline-secondary" type="submit">Login As</button>
+                                    </form>
+                                {% endif %}
+                            </details>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="7" class="empty-table">No users found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

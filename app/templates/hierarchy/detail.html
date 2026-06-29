@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block title %}{{ level_titles[item.level] }} Detail{% endblock %}
+
+{% block content %}
+<section class="detail-shell">
+    <nav class="detail-breadcrumbs">
+        <a href="/dashboard">Dashboard</a>
+        {% for crumb in breadcrumb %}
+            <span>/</span>
+            {% if loop.last %}
+                <strong>{{ crumb.title }}</strong>
+            {% else %}
+                <a href="{{ detail_paths[crumb.level].format(id=crumb.id) }}">{{ crumb.title }}</a>
+            {% endif %}
+        {% endfor %}
+    </nav>
+
+    <div class="detail-header">
+        <div>
+            <h1 class="mb-2">{{ item.title }}</h1>
+            <p class="detail-description mb-0">{{ item.description or "No description provided." }}</p>
+            <div class="detail-header-actions">
+                {% if create_allowed %}
+                    {% if item.level.value == 'OBJECTIVE' %}
+                        <div class="dropdown">
+                            <button class="btn app-btn-primary detail-action-button" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-plus-lg"></i> Create
+                            </button>
+                            <ul class="dropdown-menu app-create-menu shadow-sm border-0">
+                                <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createMilestoneModal">Milestone</button></li>
+                                <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createActivityModal">Activity</button></li>
+                                <li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#createTaskModal">Task</button></li>
+                            </ul>
+                        </div>
+                    {% else %}
+                        <button class="btn app-btn-primary detail-action-button" type="button" data-bs-toggle="modal" data-bs-target="#createChildModal">
+                            <i class="bi bi-plus-lg"></i> Create
+                        </button>
+                    {% endif %}
+                {% endif %}
+                {% if can_edit %}
+                    <button class="btn btn-outline-dark detail-action-button" type="button" data-bs-toggle="modal" data-bs-target="#editItemModal">
+                        <i class="bi bi-pencil"></i> Edit {{ level_titles[item.level] }}
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="detail-summary">
+            <div class="summary-meta">
+                {% set item_overdue = item.due_date and item.due_date < today and item.status.value not in ['COMPLETED', 'CLOSED'] %}
+                <span class="status-badge {% if item_overdue %}status-overdue{% else %}status-{{ item.status.value|lower }}{% endif %}">{% if item_overdue %}OVERDUE{% else %}{{ item.status.value.replace('_', ' ') }}{% endif %}</span>
+                <span class="priority-badge priority-{{ item.priority.value|lower }}">{{ item.priority.value }}</span>
+            </div>
+            <div class="summary-grid">
+                <div><span>Owner</span><strong>{{ item.assignee.full_name if item.assignee else "Unassigned" }}</strong></div>
+                <div><span>Team</span><strong>{{ item.team.name if item.team else "-" }}</strong></div>
+                <div><span>Due Date</span><strong>{{ item.due_date|long_date }}</strong></div>
+                <div><span>Progress</span><strong>{{ item.progress_percent }}%</strong></div>
+            </div>
+            <div class="progress compact-progress {% if item.status.value == 'BLOCKED' %}progress-is-blocked{% endif %}">
+                <div class="progress-bar status-progress-{% if item_overdue %}overdue{% else %}{{ item.status.value|lower }}{% endif %}" style="width: {{ item.progress_percent }}%"></div>
+            </div>
+        </div>
+    </div>
+
+    <section class="table-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>{{ child_title }}</h2>
+                    </div>
+                    <div class="section-actions">
+                        {% if child_level.value == 'WORKSTREAM' and current_user.role == 'MANAGER' %}
+                            <div class="view-toggle">
+                                <a class="btn {% if child_view_mode == 'table' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="/objectives/{{ item.id }}?view=table">Table View</a>
+                                <a class="btn {% if child_view_mode == 'board' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="/objectives/{{ item.id }}?view=board">Board View</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if child_level.value == 'WORKSTREAM' and child_view_mode == 'board' %}
+                    <div class="board-shell milestone-board">
+                        {% for status, items in child_board.items() %}
+                            <div class="board-column">
+                                <div class="board-header">
+                                    <strong>{{ board_labels[status].replace('_', ' ') }}</strong>
+                                    <span>{{ items|length }}</span>
+                                </div>
+                                <div class="board-stack">
+                                    {% for child in items %}
+                                        <a class="board-card milestone-card" href="{{ detail_paths[child.level].format(id=child.id) }}">
+                                            <div class="milestone-card-top">
+                                                <span class="milestone-author">{{ (child.creator.full_name if child.creator else child.assignee.full_name if child.assignee else '?')[:1] }}</span>
+                                                <span class="priority-badge priority-{{ child.priority.value|lower }}">{{ child.priority.value }}</span>
+                                            </div>
+                                            <h3>{{ child.title }}</h3>
+                                            <p>{{ child.description or "No description provided." }}</p>
+                                            <div class="milestone-card-footer">
+                                                {% set child_overdue = child.due_date and child.due_date < today and child.status.value not in ['COMPLETED', 'CLOSED'] %}
+                                                <span class="status-badge {% if child_overdue %}status-overdue{% else %}status-{{ child.status.value|lower }}{% endif %}">{% if child_overdue %}OVERDUE{% else %}{{ child.status.value.replace('_', ' ') }}{% endif %}</span>
+                                                {% if child.due_date %}
+                                                    <span class="milestone-due"><i class="bi bi-calendar3"></i> {{ child.due_date|long_date }}</span>
+                                                {% endif %}
+                                            </div>
+                                        </a>
+                                    {% else %}
+                                        <div class="board-empty">No milestones in this column.</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="table-responsive">
+                        <table class="table enterprise-table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>{{ level_titles[child_level] }}</th>
+                                    <th>Status</th>
+                                    <th>Progress</th>
+                                    <th>Owner</th>
+                                    {% if child_level.value == 'WORKSTREAM' %}
+                                        <th>Activities Count</th>
+                                    {% else %}
+                                        <th>Tasks Count</th>
+                                    {% endif %}
+                                    <th>Due Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for child in children %}
+                                    <tr>
+                                        <td>
+                                            <a class="table-title" href="{{ detail_paths[child.level].format(id=child.id) }}">{{ child.title }}</a>
+                                            <div class="table-subtitle">{{ child.description or "No description provided." }}</div>
+                                        </td>
+                                        {% set child_overdue = child.due_date and child.due_date < today and child.status.value not in ['COMPLETED', 'CLOSED'] %}
+                                        <td><span class="status-badge {% if child_overdue %}status-overdue{% else %}status-{{ child.status.value|lower }}{% endif %}">{% if child_overdue %}OVERDUE{% else %}{{ child.status.value.replace('_', ' ') }}{% endif %}</span></td>
+                                        <td>
+                                            <div class="progress-cell">
+                                                <strong>{{ child.progress_percent }}%</strong>
+                                                <div class="progress compact-progress {% if child.status.value == 'BLOCKED' %}progress-is-blocked{% endif %}">
+                                                    <div class="progress-bar status-progress-{% if child_overdue %}overdue{% else %}{{ child.status.value|lower }}{% endif %}" style="width: {{ child.progress_percent }}%"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ child.assignee.full_name if child.assignee else "Unassigned" }}</td>
+                                        <td>{{ child.children|length }}</td>
+                                        <td class="date-cell">{{ child.due_date|long_date }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="empty-table">No {{ child_title|lower }} available yet.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+    </section>
+
+    <section class="form-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Audit History</h2>
+                    </div>
+                </div>
+                <div class="timeline-list">
+                    {% for log in audit_logs %}
+                        <div class="timeline-item">
+                            <strong>{{ log.action.replace('objective', 'project').replace('workstream', 'milestone').replace('_', ' ').title() }}</strong>
+                            <div class="small text-secondary">{{ log.actor.full_name if log.actor else "System" }} · {{ log.created_at|long_datetime }}</div>
+                        </div>
+                    {% else %}
+                        <p class="text-secondary mb-0">No recent audit history for this item.</p>
+                    {% endfor %}
+                </div>
+    </section>
+</section>
+
+{% if create_allowed and item.level.value != 'OBJECTIVE' %}
+<div class="modal fade" id="createChildModal" tabindex="-1" aria-labelledby="createChildModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-modal">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5" id="createChildModalLabel">Create {{ level_titles[child_level] }}</h2>
+                </div>
+                <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{{ create_action }}">
+                <div class="modal-body stack-form">
+                    <input class="form-control" name="title" placeholder="{{ level_titles[child_level] }} title" required>
+                    <textarea class="form-control" name="description" placeholder="Description"></textarea>
+                    <div class="owner-lock">
+                        <span>Owner</span>
+                        <strong>{{ current_user.full_name }}</strong>
+                        <small>The creator automatically becomes the owner.</small>
+                    </div>
+                    <select class="form-select" name="priority">
+                        {% for priority in priorities %}
+                            <option value="{{ priority }}">{{ priority.value }}</option>
+                        {% endfor %}
+                    </select>
+                    <input class="form-control" type="date" name="due_date">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-dark" type="button" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn app-btn-primary" type="submit">Create {{ level_titles[child_level] }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if create_allowed and item.level.value == 'OBJECTIVE' %}
+    {% set project_creates = [
+        ('Milestone', 'WORKSTREAM', 'createMilestoneModal'),
+        ('Activity', 'ACTIVITY', 'createActivityModal'),
+        ('Task', 'TASK', 'createTaskModal')
+    ] %}
+    {% for create_label, create_level, modal_id in project_creates %}
+        <div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-labelledby="{{ modal_id }}Label" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content app-modal">
+                        <div class="modal-header">
+                            <div>
+                            <h2 class="modal-title fs-5" id="{{ modal_id }}Label">Create {{ create_label }}</h2>
+                            </div>
+                        <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="post" action="/objectives/{{ item.id }}/create">
+                        <input type="hidden" name="level" value="{{ create_level }}">
+                        <div class="modal-body stack-form">
+                            {% if create_level == 'ACTIVITY' %}
+                                {% if project_milestones %}
+                                    <select class="form-select" name="parent_id" required>
+                                        <option value="">Select Milestone</option>
+                                        {% for milestone in project_milestones %}
+                                            <option value="{{ milestone.id }}">{{ milestone.title }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% else %}
+                                    <p class="form-hint">A General milestone will be created automatically for this activity.</p>
+                                {% endif %}
+                            {% elif create_level == 'TASK' %}
+                                {% if project_activities %}
+                                    <select class="form-select" name="parent_id" required>
+                                        <option value="">Select Activity</option>
+                                        {% for activity in project_activities %}
+                                            <option value="{{ activity.id }}">{{ activity.parent.title if activity.parent else "Milestone" }} / {{ activity.title }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% else %}
+                                    {% if project_milestones %}
+                                        <select class="form-select" name="milestone_id" required>
+                                            <option value="">Select Milestone</option>
+                                            {% for milestone in project_milestones %}
+                                                <option value="{{ milestone.id }}">{{ milestone.title }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <p class="form-hint">A General Tasks activity will be created automatically inside the selected milestone.</p>
+                                    {% else %}
+                                        <p class="form-hint">A General milestone and General Tasks activity will be created automatically.</p>
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                            <input class="form-control" name="title" placeholder="{{ create_label }} title" required>
+                            <textarea class="form-control" name="description" placeholder="Description"></textarea>
+                            <div class="owner-lock">
+                                <span>Owner</span>
+                                <strong>{{ current_user.full_name }}</strong>
+                                <small>The creator automatically becomes the owner.</small>
+                            </div>
+                            <select class="form-select" name="priority">
+                                {% for priority in priorities %}
+                                    <option value="{{ priority }}">{{ priority.value }}</option>
+                                {% endfor %}
+                            </select>
+                            <input class="form-control" type="date" name="due_date">
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn btn-outline-dark" type="button" data-bs-dismiss="modal">Cancel</button>
+                            <button class="btn app-btn-primary" type="submit">Create {{ create_label }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% endif %}
+
+{% if can_edit %}
+<div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-modal">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="editItemModalLabel">Edit {{ level_titles[item.level] }}</h2>
+                <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="/tasks/{{ item.id }}/work-item">
+                <div class="modal-body stack-form">
+                    <input class="form-control" name="title" value="{{ item.title }}" required>
+                    <textarea class="form-control" name="description">{{ item.description }}</textarea>
+                    <div class="owner-lock">
+                        <span>Owner</span>
+                        <strong>{{ item.assignee.full_name if item.assignee else item.creator.full_name if item.creator else "Owner locked" }}</strong>
+                        <small>Ownership stays with the original creator.</small>
+                    </div>
+                    <div class="two-up">
+                        <select class="form-select" name="priority">
+                            {% for priority in priorities %}
+                                <option value="{{ priority }}" {% if priority == item.priority %}selected{% endif %}>{{ priority.value }}</option>
+                            {% endfor %}
+                        </select>
+                        <select class="form-select" name="status">
+                            {% for work_status in work_item_statuses %}
+                                <option value="{{ work_status }}" {% if work_status == item.status %}selected{% endif %}>{{ work_status.value.replace('_', ' ') }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <input class="form-control" type="date" name="due_date" value="{{ item.due_date or '' }}">
+                </div>
+                <div class="modal-footer justify-content-between">
+                    {% if can_delete %}
+                        <button class="btn btn-outline-danger" formaction="/work-items/{{ item.id }}/delete" formnovalidate type="submit" onclick="return confirm('Delete this {{ level_titles[item.level]|lower }} and all linked work?');">Delete</button>
+                    {% else %}
+                        <span></span>
+                    {% endif %}
+                    <div class="action-row">
+                        <button class="btn btn-outline-dark" type="button" data-bs-dismiss="modal">Cancel</button>
+                        <button class="btn app-btn-primary" type="submit">Save Changes</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

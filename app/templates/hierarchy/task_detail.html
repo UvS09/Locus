@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Task Detail{% endblock %}
+
+{% block content %}
+<section class="detail-shell">
+    <nav class="detail-breadcrumbs">
+        {% for crumb in breadcrumb %}
+            {% if not loop.first %}<span>/</span>{% endif %}
+            {% if loop.last %}
+                <strong>{{ crumb.title }}</strong>
+            {% else %}
+                <a href="{{ detail_paths[crumb.level].format(id=crumb.id) }}">{{ crumb.title }}</a>
+            {% endif %}
+        {% endfor %}
+    </nav>
+
+    <div class="detail-header">
+        <div>
+            <h1 class="mb-2">{{ item.title }}</h1>
+            <p class="detail-description mb-0">{{ item.description or "No description provided." }}</p>
+            {% if can_edit %}
+                <div class="detail-header-actions">
+                    <button class="btn app-btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#editTaskModal">
+                        <i class="bi bi-pencil"></i> Edit Task
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+        <div class="detail-summary">
+            <div class="summary-meta">
+                {% set item_overdue = item.due_date and item.due_date < today and item.status.value not in ['COMPLETED', 'CLOSED'] %}
+                <span class="status-badge {% if item_overdue %}status-overdue{% else %}status-{{ item.status.value|lower }}{% endif %}">{% if item_overdue %}OVERDUE{% else %}{{ item.status.value.replace('_', ' ') }}{% endif %}</span>
+                <span class="priority-badge priority-{{ item.priority.value|lower }}">{{ item.priority.value }}</span>
+            </div>
+            <div class="summary-grid">
+                <div><span>Owner</span><strong>{{ item.assignee.full_name if item.assignee else "Unassigned" }}</strong></div>
+                <div><span>Due Date</span><strong>{{ item.due_date|long_date }}</strong></div>
+                <div><span>Progress</span><strong>{{ item.progress_percent }}%</strong></div>
+                <div><span>Status</span><strong>{{ item.status.value.replace('_', ' ') }}</strong></div>
+            </div>
+            <div class="progress compact-progress {% if item.status.value == 'BLOCKED' %}progress-is-blocked{% endif %}">
+                <div class="progress-bar status-progress-{% if item_overdue %}overdue{% else %}{{ item.status.value|lower }}{% endif %}" style="width: {{ item.progress_percent }}%"></div>
+            </div>
+        </div>
+    </div>
+
+    <section class="table-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Comments</h2>
+                    </div>
+                </div>
+                <form method="post" action="/tasks/{{ item.id }}/comments" class="stack-form mb-3">
+                    <textarea class="form-control" name="content" placeholder="Add a comment" required></textarea>
+                    <button class="btn btn-outline-primary align-self-start" type="submit">Post Comment</button>
+                </form>
+                <div class="timeline-list">
+                    {% for log in comment_logs %}
+                        <div class="timeline-item">
+                            <strong>{{ log.actor.full_name if log.actor else "System" }}</strong>
+                            <p class="mb-1">{{ log.details.get("content", "") if log.details else "" }}</p>
+                            <div class="small text-secondary">{{ log.created_at|long_datetime }}</div>
+                        </div>
+                    {% else %}
+                        <p class="text-secondary mb-0">No comments yet.</p>
+                    {% endfor %}
+                </div>
+    </section>
+
+    <section class="form-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Activity Timeline</h2>
+                    </div>
+                </div>
+                <div class="timeline-list">
+                    {% for log in audit_logs %}
+                        <div class="timeline-item">
+                            <strong>{{ log.action.replace('objective', 'project').replace('workstream', 'milestone').replace('_', ' ').title() }}</strong>
+                            <div class="small text-secondary">{{ log.actor.full_name if log.actor else "System" }} · {{ log.created_at|long_datetime }}</div>
+                        </div>
+                    {% else %}
+                        <p class="text-secondary mb-0">No recent timeline activity.</p>
+                    {% endfor %}
+                </div>
+    </section>
+</section>
+
+{% if can_edit %}
+<div class="modal fade" id="editTaskModal" tabindex="-1" aria-labelledby="editTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-modal">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="editTaskModalLabel">Edit Task</h2>
+                <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="/tasks/{{ item.id }}/work-item">
+                <div class="modal-body stack-form">
+                    <input class="form-control" name="title" value="{{ item.title }}" required>
+                    <textarea class="form-control" name="description">{{ item.description }}</textarea>
+                    <div class="owner-lock">
+                        <span>Owner</span>
+                        <strong>{{ item.assignee.full_name if item.assignee else item.creator.full_name if item.creator else "Owner locked" }}</strong>
+                        <small>Ownership stays with the original creator.</small>
+                    </div>
+                    <div class="two-up">
+                        <select class="form-select" name="priority">
+                            {% for priority in priorities %}
+                                <option value="{{ priority }}" {% if priority == item.priority %}selected{% endif %}>{{ priority.value }}</option>
+                            {% endfor %}
+                        </select>
+                        <select class="form-select" name="status">
+                            {% for work_status in work_item_statuses %}
+                                <option value="{{ work_status }}" {% if work_status == item.status %}selected{% endif %}>{{ work_status.value.replace('_', ' ') }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <input class="form-control" type="date" name="due_date" value="{{ item.due_date or '' }}">
+                </div>
+                <div class="modal-footer justify-content-between">
+                    {% if can_delete %}
+                        <button class="btn btn-outline-danger" formaction="/work-items/{{ item.id }}/delete" formnovalidate type="submit" onclick="return confirm('Delete this task?');">Delete</button>
+                    {% else %}
+                        <span></span>
+                    {% endif %}
+                    <div class="action-row">
+                        {% if current_user.role != "EMPLOYEE" %}
+                            <button class="btn btn-outline-dark" formaction="/tasks/{{ item.id }}/close-work-item" formnovalidate type="submit">Close Task</button>
+                        {% endif %}
+                        <button class="btn app-btn-primary" type="submit">Save Changes</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

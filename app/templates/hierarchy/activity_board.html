@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Activity Detail{% endblock %}
+
+{% block content %}
+<section class="detail-shell">
+    <nav class="detail-breadcrumbs">
+        {% for crumb in breadcrumb %}
+            {% if not loop.first %}<span>/</span>{% endif %}
+            {% if loop.last %}
+                <strong>{{ crumb.title }}</strong>
+            {% else %}
+                <a href="{{ detail_paths[crumb.level].format(id=crumb.id) }}">{{ crumb.title }}</a>
+            {% endif %}
+        {% endfor %}
+    </nav>
+
+    <div class="detail-header">
+        <div>
+            <h1 class="mb-2">{{ item.title }}</h1>
+            <p class="detail-description mb-0">{{ item.description or "No description provided." }}</p>
+            <div class="detail-header-actions">
+                {% if create_allowed %}
+                    <button class="btn app-btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#createTaskModal">
+                        <i class="bi bi-plus-lg"></i> Create Task
+                    </button>
+                {% endif %}
+                {% if can_edit %}
+                    <button class="btn btn-outline-dark" type="button" data-bs-toggle="modal" data-bs-target="#editActivityModal">
+                        <i class="bi bi-pencil"></i> Edit Activity
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="detail-summary">
+            <div class="summary-meta">
+                {% set item_overdue = item.due_date and item.due_date < today and item.status.value not in ['COMPLETED', 'CLOSED'] %}
+                <span class="status-badge {% if item_overdue %}status-overdue{% else %}status-{{ item.status.value|lower }}{% endif %}">{% if item_overdue %}OVERDUE{% else %}{{ item.status.value.replace('_', ' ') }}{% endif %}</span>
+                <span class="priority-badge priority-{{ item.priority.value|lower }}">{{ item.priority.value }}</span>
+            </div>
+            <div class="summary-grid">
+                <div><span>Owner</span><strong>{{ item.assignee.full_name if item.assignee else "Unassigned" }}</strong></div>
+                <div><span>Due Date</span><strong>{{ item.due_date|long_date }}</strong></div>
+                <div><span>Progress</span><strong>{{ item.progress_percent }}%</strong></div>
+                <div><span>Tasks</span><strong>{{ tasks|length }}</strong></div>
+            </div>
+            <div class="progress compact-progress {% if item.status.value == 'BLOCKED' %}progress-is-blocked{% endif %}">
+                <div class="progress-bar status-progress-{% if item_overdue %}overdue{% else %}{{ item.status.value|lower }}{% endif %}" style="width: {{ item.progress_percent }}%"></div>
+            </div>
+        </div>
+    </div>
+
+    <section class="table-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Tasks</h2>
+                    </div>
+                    <div class="view-toggle">
+                        <a class="btn {% if view_mode == 'table' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="/activities/{{ item.id }}?view=table">Table View</a>
+                        <a class="btn {% if view_mode == 'board' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="/activities/{{ item.id }}?view=board">Board View</a>
+                    </div>
+                </div>
+
+                {% if view_mode == 'table' %}
+                    <div class="table-responsive">
+                        <table class="table enterprise-table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Owner</th>
+                                    <th>Due Date</th>
+                                    <th>Last Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in tasks %}
+                                    <tr>
+                                        <td>#{{ task.id }}</td>
+                                        <td>
+                                            <a class="table-title" href="/tasks/{{ task.id }}">{{ task.title }}</a>
+                                            <div class="table-subtitle">{{ task.description or "No description provided." }}</div>
+                                        </td>
+                                        {% set task_overdue = task.due_date and task.due_date < today and task.status.value not in ['COMPLETED', 'CLOSED'] %}
+                                        <td><span class="status-badge {% if task_overdue %}status-overdue{% else %}status-{{ task.status.value|lower }}{% endif %}">{% if task_overdue %}OVERDUE{% else %}{{ task.status.value.replace('_', ' ') }}{% endif %}</span></td>
+                                        <td><span class="priority-badge priority-{{ task.priority.value|lower }}">{{ task.priority.value }}</span></td>
+                                        <td>{{ task.assignee.full_name if task.assignee else "Unassigned" }}</td>
+                                        <td class="date-cell">{{ task.due_date|long_date }}</td>
+                                        <td class="date-cell">{{ task.updated_at|long_date }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td colspan="7" class="empty-table">No tasks created for this activity yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="board-shell">
+                        {% for status in board_columns %}
+                            <div class="board-column">
+                                <div class="board-header">
+                                    <strong>{{ board_labels[status] }}</strong>
+                                    <span>{{ task_board[status]|length }}</span>
+                                </div>
+                                <div class="board-stack">
+                                    {% for task in task_board[status] %}
+                                        <a class="board-card" href="/tasks/{{ task.id }}">
+                                            <h3>{{ task.title }}</h3>
+                                            <p>{{ task.assignee.full_name if task.assignee else "Unassigned" }}</p>
+                                            <div class="card-tags">
+                                                <span class="priority-badge priority-{{ task.priority.value|lower }}">{{ task.priority.value }}</span>
+                                                <span class="muted-tag">{{ task.due_date|long_date if task.due_date else "No due date" }}</span>
+                                            </div>
+                                        </a>
+                                    {% else %}
+                                        <div class="board-empty">No tasks in this column.</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+    </section>
+
+    <section class="form-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Recent Activity</h2>
+                    </div>
+                </div>
+                <div class="timeline-list">
+                    {% for log in audit_logs %}
+                        <div class="timeline-item">
+                            <strong>{{ log.action.replace('objective', 'project').replace('workstream', 'milestone').replace('_', ' ').title() }}</strong>
+                            <div class="small text-secondary">{{ log.actor.full_name if log.actor else "System" }} · {{ log.created_at|long_datetime }}</div>
+                        </div>
+                    {% else %}
+                        <p class="text-secondary mb-0">No recent activity yet.</p>
+                    {% endfor %}
+                </div>
+    </section>
+</section>
+
+{% if create_allowed %}
+<div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-modal">
+            <div class="modal-header">
+                <div>
+                    <h2 class="modal-title fs-5" id="createTaskModalLabel">Create Task</h2>
+                </div>
+                <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="/activities/{{ item.id }}/tasks">
+                <div class="modal-body stack-form">
+                    <input class="form-control" name="title" placeholder="Task title" required>
+                    <textarea class="form-control" name="description" placeholder="Task description"></textarea>
+                    <div class="owner-lock">
+                        <span>Owner</span>
+                        <strong>{{ current_user.full_name }}</strong>
+                        <small>The creator automatically becomes the owner.</small>
+                    </div>
+                    <div class="two-up">
+                        <select class="form-select" name="priority">
+                            {% for priority in priorities %}
+                                <option value="{{ priority }}">{{ priority.value }}</option>
+                            {% endfor %}
+                        </select>
+                        <input class="form-control" type="date" name="due_date">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-dark" type="button" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn app-btn-primary" type="submit">Create Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if can_edit %}
+<div class="modal fade" id="editActivityModal" tabindex="-1" aria-labelledby="editActivityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content app-modal">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="editActivityModalLabel">Edit Activity</h2>
+                <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="/tasks/{{ item.id }}/work-item">
+                <div class="modal-body stack-form">
+                    <input class="form-control" name="title" value="{{ item.title }}" required>
+                    <textarea class="form-control" name="description">{{ item.description }}</textarea>
+                    <div class="owner-lock">
+                        <span>Owner</span>
+                        <strong>{{ item.assignee.full_name if item.assignee else item.creator.full_name if item.creator else "Owner locked" }}</strong>
+                    </div>
+                    <div class="two-up">
+                        <select class="form-select" name="priority">
+                            {% for priority in priorities %}
+                                <option value="{{ priority }}" {% if priority == item.priority %}selected{% endif %}>{{ priority.value }}</option>
+                            {% endfor %}
+                        </select>
+                        <select class="form-select" name="status">
+                            {% for work_status in work_item_statuses %}
+                                <option value="{{ work_status }}" {% if work_status == item.status %}selected{% endif %}>{{ work_status.value.replace('_', ' ') }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <input class="form-control" type="date" name="due_date" value="{{ item.due_date or '' }}">
+                </div>
+                <div class="modal-footer justify-content-between">
+                    {% if can_delete %}
+                        <button class="btn btn-outline-danger" formaction="/work-items/{{ item.id }}/delete" formnovalidate type="submit" onclick="return confirm('Delete this activity and all linked tasks?');">Delete</button>
+                    {% else %}
+                        <span></span>
+                    {% endif %}
+                    <div class="action-row">
+                        <button class="btn btn-outline-dark" type="button" data-bs-dismiss="modal">Cancel</button>
+                        <button class="btn app-btn-primary" type="submit">Save Changes</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

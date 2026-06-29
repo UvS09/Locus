@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<section class="admin-command-hero">
+    <div>
+        <h1>Governance Command Center</h1>
+    </div>
+    <div class="hero-actions">
+        <a class="btn app-btn-primary" href="/admin/users"><i class="bi bi-person-plus"></i> Manage Users</a>
+        <a class="btn btn-outline-dark detail-action-button" href="/admin/teams"><i class="bi bi-diagram-3"></i> Teams</a>
+    </div>
+</section>
+
+<section class="admin-kpi-grid mt-4">
+    <article class="admin-kpi-card kpi-red"><span>Total Users</span><strong>{{ stats.total_users }}</strong><small>{{ stats.active_users }} active</small></article>
+    <article class="admin-kpi-card kpi-black"><span>Teams</span><strong>{{ stats.total_teams }}</strong><small>Organized workgroups</small></article>
+    <article class="admin-kpi-card kpi-white"><span>Roles</span><strong>{{ stats.total_roles }}</strong><small>{{ stats.custom_roles|length }} custom</small></article>
+    <article class="admin-kpi-card kpi-red"><span>Projects</span><strong>{{ stats.total_objectives }}</strong><small>{{ stats.portfolio_progress }}% portfolio progress</small></article>
+    <article class="admin-kpi-card kpi-black"><span>Open Work</span><strong>{{ stats.active_tasks }}</strong><small>Milestones, activities, tasks</small></article>
+    <article class="admin-kpi-card kpi-white"><span>Audit Events</span><strong>{{ stats.recent_audit_logs|length }}</strong><small>Recent governance actions</small></article>
+</section>
+
+<section class="admin-control-grid mt-4">
+    <article class="table-panel admin-wide-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Recent Audit Logs</h2>
+            </div>
+            <a class="btn btn-sm btn-outline-dark" href="/admin/audit-logs">View all</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table enterprise-table align-middle">
+                <thead>
+                    <tr>
+                        <th>Action</th>
+                        <th>Entity</th>
+                        <th>Actor</th>
+                        <th>When</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in stats.recent_audit_logs %}
+                        <tr>
+                            <td>{{ log.action.replace('objective', 'project').replace('workstream', 'milestone') }}</td>
+                            <td>{{ log.entity_type }} #{{ log.entity_id or "-" }}</td>
+                            <td>{{ log.actor.full_name if log.actor else "System" }}</td>
+                            <td class="date-cell">{{ log.created_at|long_datetime }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="4" class="empty-table">No audit activity yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <aside class="admin-side-stack">
+        <section class="form-panel">
+            <div class="section-heading">
+                <div>
+                    <h2>Admin Controls</h2>
+                </div>
+            </div>
+            <div class="admin-control-list">
+                <a href="/admin/users"><i class="bi bi-people"></i><span>Users & Roles</span><strong>Open</strong></a>
+                <a href="/admin/teams"><i class="bi bi-diagram-3"></i><span>Teams</span><strong>Open</strong></a>
+                <a href="/admin/reports"><i class="bi bi-bar-chart"></i><span>Reports</span><strong>Open</strong></a>
+                <a href="/admin/audit-logs"><i class="bi bi-shield-check"></i><span>Audit Logs</span><strong>Open</strong></a>
+            </div>
+        </section>
+
+        <section class="form-panel">
+            <div class="section-heading">
+                <div>
+                    <h2>Custom Roles</h2>
+                </div>
+            </div>
+            <div class="list-stack">
+                {% for role in stats.role_distribution %}
+                    <div class="list-row">
+                        <span>{{ role.name }} <small>{{ role.access_level }} access</small></span>
+                        <strong>{{ role.count }}</strong>
+                    </div>
+                {% else %}
+                    <div class="empty-table">No custom roles yet.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </aside>
+</section>
+{% endblock %}

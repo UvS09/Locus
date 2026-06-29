@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Projects{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <div>
+        <h1 class="mb-2">Projects</h1>
+    </div>
+    <div class="hero-actions">
+        {% if create_allowed %}
+            <a class="btn app-btn-primary" href="/create?level=OBJECTIVE">Create Project</a>
+        {% endif %}
+    </div>
+</section>
+
+<section class="table-panel mt-4">
+    <form class="filter-bar" method="get" action="/objectives">
+        <input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Search projects">
+        <select class="form-select" name="status">
+            <option value="">All statuses</option>
+            {% for work_status in work_item_statuses %}
+                <option value="{{ work_status.value }}" {% if selected_status == work_status.value %}selected{% endif %}>{{ work_status.value.replace('_', ' ') }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-outline-secondary" type="submit">Filter</button>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table enterprise-table align-middle">
+            <thead>
+                <tr>
+                    <th>Project Name</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Owner</th>
+                    <th>Team</th>
+                    <th>Due Date</th>
+                    <th>Last Updated</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for objective in objectives %}
+                    <tr>
+                        <td>
+                            <a class="table-title" href="/objectives/{{ objective.id }}">{{ objective.title }}</a>
+                            <div class="table-subtitle">{{ objective.description or "No description provided." }}</div>
+                        </td>
+                        {% set objective_overdue = objective.due_date and objective.due_date < today and objective.status.value not in ['COMPLETED', 'CLOSED'] %}
+                        <td><span class="status-badge {% if objective_overdue %}status-overdue{% else %}status-{{ objective.status.value|lower }}{% endif %}">{% if objective_overdue %}OVERDUE{% else %}{{ objective.status.value.replace('_', ' ') }}{% endif %}</span></td>
+                        <td>
+                            <div class="progress-cell">
+                                <strong>{{ objective.progress_percent }}%</strong>
+                                <div class="progress compact-progress {% if objective.status.value == 'BLOCKED' %}progress-is-blocked{% endif %}">
+                                    <div class="progress-bar status-progress-{% if objective_overdue %}overdue{% else %}{{ objective.status.value|lower }}{% endif %}" style="width: {{ objective.progress_percent }}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ objective.assignee.full_name if objective.assignee else "Unassigned" }}</td>
+                        <td>{{ objective.team.name if objective.team else "-" }}</td>
+                        <td class="date-cell">{{ objective.due_date|long_date }}</td>
+                        <td class="date-cell">{{ objective.updated_at|long_date }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="7" class="empty-table">No projects match the current filters.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Reports{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <div>
+        <h1 class="mb-2">Portfolio Reporting</h1>
+    </div>
+</section>
+
+<section class="metrics-grid mt-4">
+    <article class="metric-card"><span>Total Users</span><strong>{{ stats.total_users }}</strong></article>
+    <article class="metric-card"><span>Total Projects</span><strong>{{ stats.total_objectives }}</strong></article>
+    <article class="metric-card"><span>Total Milestones</span><strong>{{ stats.total_workstreams }}</strong></article>
+    <article class="metric-card"><span>Total Activities</span><strong>{{ stats.total_activities }}</strong></article>
+    <article class="metric-card"><span>Total Tasks</span><strong>{{ stats.total_task_items }}</strong></article>
+    <article class="metric-card"><span>Total Sub-tasks</span><strong>{{ stats.total_subtasks }}</strong></article>
+    <article class="metric-card"><span>Active Work</span><strong>{{ stats.active_tasks }}</strong></article>
+    <article class="metric-card"><span>Portfolio Progress</span><strong>{{ stats.portfolio_progress }}%</strong></article>
+</section>
+{% endblock %}

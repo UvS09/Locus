@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Error{% endblock %}
+
+{% block content %}
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body">
+        <h1 class="h4">Something went wrong</h1>
+        <p class="text-secondary">{{ error or "An unexpected error occurred." }}</p>
+    </div>
+</div>
+{% endblock %}

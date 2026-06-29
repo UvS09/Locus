@@ -1,0 +1,68 @@
+{% set current_path = request.url.path %}
+{% set path_parts = current_path.strip('/').split('/') if current_path.strip('/') else [] %}
+{% set route_labels = {'objectives': 'Projects', 'workstreams': 'Milestones', 'activities': 'Activities', 'tasks': 'Tasks'} %}
+{% set route_title = (route_labels.get(path_parts[-1], path_parts[-1].replace('-', ' ').replace('_', ' ').title()) if path_parts else 'Dashboard') %}
+
+<header class="app-topbar">
+    <div class="topbar-heading">
+        <div class="topbar-breadcrumbs">
+            <a href="/dashboard">Workspace</a>
+            {% if path_parts %}
+                {% for part in path_parts %}
+                    <span class="breadcrumb-separator">/</span>
+                    <span>{{ route_labels.get(part, part.replace('-', ' ').replace('_', ' ').title()) }}</span>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <h1 class="topbar-title">{% block page_title %}{{ route_title }}{% endblock %}</h1>
+    </div>
+
+    <div class="topbar-tools">
+        <form class="topbar-search" method="get" action="/objectives">
+            <i class="bi bi-search"></i>
+            <input type="search" name="q" value="{{ request.query_params.get('q', '') }}" placeholder="Search projects, milestones, activities, tasks">
+        </form>
+
+        {% if global_create_levels %}
+            <div class="dropdown">
+                <button class="btn app-btn-primary topbar-create icon-create-button" type="button" data-bs-toggle="dropdown" aria-label="Create work" aria-expanded="false">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end app-create-menu shadow-sm border-0">
+                    {% for level in global_create_levels %}
+                        <li><a class="dropdown-item" href="/create?level={{ level }}">{{ {'OBJECTIVE': 'Project', 'WORKSTREAM': 'Milestone', 'ACTIVITY': 'Activity', 'TASK': 'Task'}[level] }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <a class="topbar-bell {% if current_path.startswith('/notifications') %}is-active{% endif %}" href="/notifications" aria-label="Notifications">
+            <i class="bi bi-bell"></i>
+            {% if unread_count %}
+                <span class="topbar-count">{{ unread_count }}</span>
+            {% endif %}
+        </a>
+
+        <div class="dropdown">
+            <button class="topbar-user" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="topbar-avatar">{{ current_user.full_name[:1] }}</span>
+                <span class="topbar-user-meta">
+                    <strong>{{ current_user.full_name }}</strong>
+                    <small>{{ current_user.display_role }}</small>
+                </span>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+                <li><span class="dropdown-item-text small text-secondary">{{ current_user.email }}</span></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="/change-password">Settings</a></li>
+                <li><a class="dropdown-item" href="/notifications">Notifications</a></li>
+                <li>
+                    <form method="post" action="/logout" class="px-3 pt-2">
+                        <button class="btn btn-outline-danger btn-sm w-100" type="submit">Logout</button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </div>
+</header>

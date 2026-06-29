@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Teams{% endblock %}
+
+{% block content %}
+<div class="content-grid">
+    <aside class="content-side">
+        <section class="form-panel">
+            <div class="section-heading">
+                <div>
+                    <h2>Create Team</h2>
+                </div>
+            </div>
+            <form method="post" action="/admin/teams" class="stack-form">
+                <input class="form-control" name="name" placeholder="Team name" required>
+                <textarea class="form-control" name="description" placeholder="Description"></textarea>
+                <select class="form-select" name="manager_id">
+                    <option value="">No manager yet</option>
+                    {% for manager in managers %}<option value="{{ manager.id }}">{{ manager.full_name }}</option>{% endfor %}
+                </select>
+                <button class="btn app-btn-primary" type="submit">Create Team</button>
+            </form>
+        </section>
+    </aside>
+    <div class="content-main">
+        <section class="table-panel">
+            <div class="section-heading">
+                <div>
+                    <h1>Teams</h1>
+                </div>
+            </div>
+            {% for team in teams %}
+                <div class="nested-panel">
+                    <div class="section-heading">
+                        <div>
+                            <h2>{{ team.name }}</h2>
+                            <p>{{ team.description or "No description yet." }}</p>
+                        </div>
+                        <span class="status-badge status-in_progress">{{ team.manager.full_name if team.manager else "No manager" }}</span>
+                    </div>
+                    <form method="post" action="/admin/teams/{{ team.id }}/assign-manager" class="two-up form-inline mb-3">
+                        <select class="form-select" name="manager_id">
+                            {% for manager in managers %}<option value="{{ manager.id }}" {% if team.manager_id == manager.id %}selected{% endif %}>{{ manager.full_name }}</option>{% endfor %}
+                        </select>
+                        <button class="btn btn-outline-primary" type="submit">Assign Manager</button>
+                    </form>
+                    <form method="post" action="/admin/teams/{{ team.id }}/assign-members" class="stack-form">
+                        <label class="form-label mb-0">Assign Employees</label>
+                        <select class="form-select" multiple name="user_ids">
+                            {% for employee in employees %}
+                                <option value="{{ employee.id }}" {% if employee.team_id == team.id %}selected{% endif %}>{{ employee.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn-outline-secondary align-self-start" type="submit">Save Team Members</button>
+                    </form>
+                </div>
+            {% else %}
+                <div class="empty-table">No teams created yet.</div>
+            {% endfor %}
+        </section>
+    </div>
+</div>
+{% endblock %}

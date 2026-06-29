@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Employee Dashboard{% endblock %}
+
+{% block content %}
+<header class="dashboard-greeting dashboard-welcome-row">
+    <h1>Welcome back, {{ current_user.full_name }}</h1>
+    <a class="btn app-btn-primary detail-action-button" href="/objectives">
+        <i class="bi bi-plus-lg"></i> Create
+    </a>
+</header>
+
+<section class="snapshot-strip mt-3" aria-label="Team snapshots">
+    <a class="snapshot-beacon beacon-members" href="/objectives">
+        <span class="beacon-pulse"></span>
+        <strong>{{ stats.snapshots.active_members }}</strong>
+        <span>Members Active</span>
+    </a>
+    <a class="snapshot-beacon beacon-projects" href="/objectives">
+        <span class="beacon-pulse"></span>
+        <strong>{{ stats.snapshots.active_projects }}</strong>
+        <span>Active Projects</span>
+    </a>
+    <a class="snapshot-beacon beacon-open" href="/employee/tasks">
+        <span class="beacon-pulse"></span>
+        <strong>{{ stats.snapshots.open_work }}</strong>
+        <span>Open Work Items</span>
+    </a>
+    <a class="snapshot-beacon beacon-complete" href="/employee/tasks?status=COMPLETED">
+        <span class="beacon-pulse"></span>
+        <strong>{{ stats.snapshots.completed_today }}</strong>
+        <span>Completed Today</span>
+    </a>
+</section>
+
+<section class="metrics-grid mt-3">
+    <a class="metric-card metric-link" href="/employee/tasks?status=PENDING"><span>To Do</span><strong>{{ stats.pending_count }}</strong></a>
+    <a class="metric-card metric-link" href="/employee/tasks?status=IN_PROGRESS"><span>In Progress</span><strong>{{ stats.in_progress_count }}</strong></a>
+    <a class="metric-card metric-link" href="/employee/tasks?status=BLOCKED"><span>Blocked</span><strong>{{ stats.blocked_count }}</strong></a>
+    <a class="metric-card metric-link" href="/employee/tasks?status=COMPLETED"><span>Completed</span><strong>{{ stats.completed_count }}</strong></a>
+</section>
+
+<div class="content-grid mt-3">
+    <div class="content-main">
+        <section class="table-panel">
+            <div class="section-heading">
+                <div>
+                    <h2>My Assigned Work</h2>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table enterprise-table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                            <th>Due Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in stats.assigned_tasks[:8] %}
+                            <tr>
+                                <td><a class="table-title" href="{{ detail_paths[item.level].format(id=item.id) }}">{{ item.title }}</a></td>
+                                {% set item_overdue = item.due_date and item.due_date < today and item.status.value not in ['COMPLETED', 'CLOSED'] %}
+                                <td><span class="status-badge {% if item_overdue %}status-overdue{% else %}status-{{ item.status.value|lower }}{% endif %}">{% if item_overdue %}OVERDUE{% else %}{{ item.status.value.replace('_', ' ') }}{% endif %}</span></td>
+                                <td>{{ item.progress_percent }}%</td>
+                                <td class="date-cell">{{ item.due_date|long_date }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="4" class="empty-table">No assigned work items.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
+
+    <aside class="content-side">
+        <section class="form-panel">
+            <div class="section-heading">
+                <div>
+                    <h2>Due Soon</h2>
+                </div>
+            </div>
+            <div class="list-stack">
+                {% for item in stats.due_soon %}
+                    <a class="list-row linked-row" href="{{ detail_paths[item.level].format(id=item.id) }}">
+                        <span>{{ item.title }}</span>
+                        <strong>{{ item.due_date|long_date }}</strong>
+                    </a>
+                {% else %}
+                    <p class="text-secondary mb-0">No upcoming due items.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </aside>
+</div>
+
+<section class="table-panel mt-3">
+    <div class="section-heading">
+        <div>
+            <h2>My Created Work</h2>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table enterprise-table align-middle">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Level</th>
+                    <th>Status</th>
+                    <th>Owner</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in stats.created_items %}
+                    <tr>
+                        <td><a class="table-title" href="{{ detail_paths[item.level].format(id=item.id) }}">{{ item.title }}</a></td>
+                        <td>{{ {'OBJECTIVE': 'Project', 'WORKSTREAM': 'Milestone', 'ACTIVITY': 'Activity', 'TASK': 'Task', 'SUB_TASK': 'Sub-task'}[item.level.value] }}</td>
+                        {% set item_overdue = item.due_date and item.due_date < today and item.status.value not in ['COMPLETED', 'CLOSED'] %}
+                        <td><span class="status-badge {% if item_overdue %}status-overdue{% else %}status-{{ item.status.value|lower }}{% endif %}">{% if item_overdue %}OVERDUE{% else %}{{ item.status.value.replace('_', ' ') }}{% endif %}</span></td>
+                        <td>{{ item.assignee.full_name if item.assignee else "Unassigned" }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="4" class="empty-table">No created work items yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

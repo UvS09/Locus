@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Logs{% endblock %}
+
+{% block content %}
+<section class="table-panel">
+    <div class="section-heading">
+        <div>
+            <h1>Audit Logs</h1>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table enterprise-table align-middle">
+            <thead><tr><th>Action</th><th>Entity</th><th>Actor</th><th>Details</th><th>Time</th></tr></thead>
+            <tbody>
+                {% for log in audit_logs %}
+                    <tr>
+                        <td>{{ log.action.replace('objective', 'project').replace('workstream', 'milestone') }}</td>
+                        <td>{{ log.entity_type }} #{{ log.entity_id or "-" }}</td>
+                        <td>{{ log.actor.full_name if log.actor else "System" }}</td>
+                        <td><code>{{ log.details or {} }}</code></td>
+                        <td class="date-cell">{{ log.created_at|long_datetime }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="5" class="empty-table">No audit logs yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

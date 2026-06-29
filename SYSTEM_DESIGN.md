@@ -1,0 +1,185 @@
+# System Design
+
+## Overview
+
+Locus is a server-rendered internal work management system for HMSI teams. It is designed for company-network usage where administrators manage access, managers coordinate delivery, and employees track assigned work.
+
+The product is intentionally lightweight: FastAPI handles HTTP requests, Jinja2 renders pages, SQLAlchemy manages persistence, and role-based service logic protects business actions.
+
+## Core Users
+
+- Admin: manages users, custom roles, teams, audit logs, and organization-level reporting.
+- Manager: manages team projects, reviews blocked/overdue work, and views employee analytics.
+- Employee: creates allowed work under existing projects and updates assigned/owned work.
+
+Custom roles can be created by admins. A custom role has a visible name, such as `Supervisor`, and maps to a base access level: `ADMIN`, `MANAGER`, or `EMPLOYEE`.
+
+## Work Hierarchy
+
+The active delivery hierarchy is:
+
+```text
+Project
+  -> Milestone
+    -> Activity
+      -> Task
+```
+
+Internally, earlier names still exist in code for compatibility:
+
+- `OBJECTIVE` means Project.
+- `WORKSTREAM` means Milestone.
+
+## Progress Model
+
+Progress is calculated recursively from the bottom of the hierarchy upward.
+
+- A completed or closed task is `100%`.
+- A pending task is `0%`.
+- An in-progress task keeps a partial progress value.
+- A blocked item keeps its last progress value but is visually struck off.
+- Parent items average their direct child progress after child progress has been recalculated.
+- If every child is completed or closed, the parent becomes completed.
+
+This means tasks drive activities, activities drive milestones, and milestones drive project progress.
+
+## Architecture
+
+```text
+Browser
+  -> FastAPI route
+    -> Auth/role dependency
+      -> Service layer
+        -> Repository layer
+          -> SQLAlchemy models
+            -> Database
+    -> Jinja2 template or redirect/file response
+```
+
+## Application Layers
+
+### Routes
+
+`app/routes/` contains FastAPI routers. Routes parse form/query data, call services, and render templates or redirects.
+
+Main route groups:
+
+- `auth_routes.py` - login, logout, signup, password change.
+- `admin_routes.py` - admin dashboard, users, roles, teams, audit logs, reports.
+- `manager_routes.py` - manager dashboard, task list, employee analytics, Excel export.
+- `employee_routes.py` - employee dashboard and task list.
+- `hierarchy_routes.py` - project/milestone/activity/task pages and creation flows.
+- `notification_routes.py` - notification views and updates.
+
+### Services
+
+`app/services/` contains business rules and side effects.
+
+Important services:
+
+- `WorkItemService` - work creation, editing, status changes, progress rollups, delete rules.
+- `UserService` - user creation, custom roles, first admin bootstrap.
+- `TeamService` - team creation and assignment.
+- `ReportService` - admin, manager, and employee analytics.
+- `NotificationService` - user notifications.
+- `AuditService` - audit log creation.
+
+Sensitive rules are enforced here, not only in templates.
+
+### Repositories
+
+`app/repositories/` contains SQLAlchemy query helpers. Repositories keep data access separate from business decisions.
+
+### Models
+
+`app/models/` defines tables and relationships:
+
+- `User`
+- `Role`
+- `Team`
+- `WorkItem`
+- `Task` and `Subtask` legacy compatibility models
+- `Notification`
+- `Comment`
+- `AuditLog`
+
+### Templates and Static Assets
+
+`app/templates/` contains Jinja2 pages for the login screen, dashboards, project hierarchy, admin screens, reports, and shared layout.
+
+`app/static/` contains CSS, JavaScript, and brand assets. The visual theme is black, red, and white with status colors for clarity.
+
+## Authentication and Authorization
+
+Authentication uses JWT access tokens stored in HTTP-only cookies. This fits a server-rendered internal browser app and avoids exposing tokens to frontend JavaScript.
+
+Authorization is role-based:
+
+- Admin routes require `ADMIN`.
+- Manager routes require `MANAGER`.
+- Employee routes require `EMPLOYEE`.
+- Work item edits also check team ownership, assignment, and creator rules.
+
+Custom roles display custom labels while preserving one of the base access levels for route authorization.
+
+## Database
+
+Local development uses SQLite by default:
+
+```text
+sqlite:///./task_manager.db
+```
+
+Production uses PostgreSQL through environment variables:
+
+```text
+postgresql+psycopg://user:password@host:port/database
+```
+
+The app initializes tables at startup for local/simple deployment. Alembic is included for migration support as the project grows.
+
+## Reporting
+
+Manager reporting includes employee analytics:
+
+- Assigned work
+- Open work
+- In-progress work
+- Blocked work
+- Overdue work
+- Completed work
+- Completion rate
+- Average progress
+
+Reports are shown in the browser with lightweight CSS charts and can be downloaded as an `.xlsx` file generated by the app.
+
+## Deployment Shape
+
+Typical internal deployment:
+
+```text
+Company browser
+  -> internal server / reverse proxy
+    -> Uvicorn running FastAPI
+      -> PostgreSQL
+```
+
+Docker Compose is provided for running the web app and PostgreSQL together.
+
+## Testing
+
+The test suite uses Pytest and FastAPI TestClient. It covers:
+
+- Authentication and route protection.
+- Role-specific route rendering.
+- Work item authorization.
+- Progress rollup behavior.
+- Blocked progress behavior.
+- Custom role creation and assignment.
+- Manager Excel report export.
+
+Run tests with:
+
+```bash
+.venv/bin/python -m pytest -q
+```
