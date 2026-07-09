@@ -428,10 +428,8 @@ class UserService:
         return user
 
     def bootstrap_admin(self, *, full_name: str, email: str, password: str) -> User:
-        if settings.is_production:
-            raise ValueError("Signup is disabled in production.")
         if self.has_any_users():
-            raise ValueError("Signup is available only for the first local admin.")
+            raise ValueError("Signup is available only for the first admin.")
         if not email.lower().endswith(settings.allowed_email_suffix):
             raise ValueError(f"Email must end with {settings.allowed_email_suffix}.")
         validate_password_strength(password)
