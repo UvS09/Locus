@@ -14,12 +14,15 @@ get_settings.cache_clear()
 
 from app.database import Base, SessionLocal, engine
 from app.main import app
+from app.models import department, designation, division  # noqa: F401
 from app.models.role import Role
 from app.models.subtask import Subtask
 from app.models.task import Task
 from app.models.team import Team
 from app.models.user import User
 from app.models.work_item import WorkItem
+from app.routes.common import redirect_with_message
+from app.schemas.work_item import WorkItemCreate
 from app.schemas.work_item import WorkItemUpdate
 from app.services.task_service import TaskService
 from app.utils.enums import TaskPriority, UserRole
@@ -123,6 +126,7 @@ def test_admin_can_create_and_assign_custom_role():
 
     db = SessionLocal()
     role = db.query(Role).filter(Role.name == "Supervisor").one()
+    team = db.query(Team).filter(Team.name == "Alpha").one()
     db.close()
 
     user_response = client.post(
@@ -131,7 +135,7 @@ def test_admin_can_create_and_assign_custom_role():
             "full_name": "Supervisor One",
             "email": "supervisor@honda.hmsi.in",
             "role_key": f"custom:{role.id}",
-            "team_id": "",
+            "team_id": str(team.id),
         },
         follow_redirects=False,
     )
@@ -155,6 +159,48 @@ def test_manager_login_dashboard_renders_after_redirect():
     assert response.status_code == 200
     assert "Welcome back" in response.text
     assert "Manager One" in response.text
+
+
+def test_redirect_with_message_preserves_existing_query_string():
+    response = redirect_with_message("/create?level=OBJECTIVE", error="Sample issue")
+    assert response.headers["location"] == "/create?level=OBJECTIVE&error=Sample+issue"
+
+
+def test_manager_without_team_can_create_and_see_project():
+    db = SessionLocal()
+    manager = User(
+        full_name="Scope Manager",
+        email="scope-manager@honda.hmsi.in",
+        role=UserRole.MANAGER,
+        password_hash=hash_password("Password123"),
+        must_change_password=False,
+    )
+    db.add(manager)
+    db.commit()
+    db.refresh(manager)
+
+    service = TaskService(db)
+    project = service.create_work_item(
+        manager,
+        WorkItemCreate(
+            level=WorkItemLevel.OBJECTIVE,
+            title="Teamless Project",
+            description="Should still be visible to the creator.",
+            priority=TaskPriority.MEDIUM,
+            due_date=None,
+            parent_id=None,
+        ),
+    )
+    db.commit()
+
+    visible_items = service.list_for_actor(manager)
+    assert project.id is not None
+    assert any(item.id == project.id for item in visible_items)
+
+    db.delete(project)
+    db.delete(manager)
+    db.commit()
+    db.close()
 
 
 def test_employee_cannot_uncheck_completed_subtask_after_due_date():
@@ -1202,4 +1248,103 @@ def test_parent_deletion_is_blocked_when_descendant_has_another_creator():
     db.rollback()
     assert db.get(WorkItem, objective.id) is not None
     assert db.get(WorkItem, workstream.id) is not None
+    db.close()
+
+
+def test_admin_panel_navigation_and_workspace_route_render():
+    db = SessionLocal()
+    admin = User(
+        full_name="Dashboard Admin",
+        email="dashboard-admin@honda.hmsi.in",
+        role=UserRole.ADMIN,
+        password_hash=hash_password("Password123"),
+        must_change_password=False,
+    )
+    db.add(admin)
+    db.commit()
+    db.close()
+
+    client = TestClient(app)
+    login_response = client.post(
+        "/login",
+        data={"email": "dashboard-admin@honda.hmsi.in", "password": "Password123"},
+        follow_redirects=False,
+    )
+    assert login_response.status_code == 303
+
+    workspace_response = client.get("/admin/workspace")
+    assert workspace_response.status_code == 200
+    assert "Workspace" in workspace_response.text
+    assert "Administration" in workspace_response.text
+    assert "Audit Logs" in workspace_response.text
+
+    reports_response = client.get("/admin/reports")
+    assert reports_response.status_code == 200
+    assert "Employee Productivity" in reports_response.text
+
+
+def test_admin_can_update_user_email_and_delete_user_permanently():
+    db = SessionLocal()
+    admin = User(
+        full_name="Lifecycle Admin",
+        email="lifecycle-admin@honda.hmsi.in",
+        role=UserRole.ADMIN,
+        password_hash=hash_password("Password123"),
+        must_change_password=False,
+    )
+    employee = User(
+        full_name="Lifecycle Employee",
+        email="lifecycle-employee@honda.hmsi.in",
+        role=UserRole.EMPLOYEE,
+        password_hash=hash_password("Password123"),
+        must_change_password=False,
+    )
+    db.add_all([admin, employee])
+    db.commit()
+    employee_id = employee.id
+    db.close()
+
+    client = TestClient(app)
+    login_response = client.post(
+        "/login",
+        data={"email": "lifecycle-admin@honda.hmsi.in", "password": "Password123"},
+        follow_redirects=False,
+    )
+    assert login_response.status_code == 303
+
+    update_response = client.post(
+        f"/admin/users/{employee_id}",
+        data={
+            "full_name": "Lifecycle Employee Updated",
+            "email": "updated-employee@honda.hmsi.in",
+            "role_key": "system:EMPLOYEE",
+            "team_id": "",
+            "is_active": "true",
+        },
+        follow_redirects=False,
+    )
+    assert update_response.status_code == 303
+
+    db = SessionLocal()
+    updated_employee = db.query(User).filter(User.id == employee_id).one()
+    assert updated_employee.email == "updated-employee@honda.hmsi.in"
+    db.close()
+
+    delete_response = client.post(f"/admin/users/{employee_id}/delete", follow_redirects=False)
+    assert delete_response.status_code == 303
+
+    db = SessionLocal()
+    deleted_user = db.query(User).filter(User.id == employee_id).one_or_none()
+    assert deleted_user is None
+
+    replacement_user = User(
+        full_name="Replacement Employee",
+        email="updated-employee@honda.hmsi.in",
+        role=UserRole.EMPLOYEE,
+        password_hash=hash_password("Password123"),
+        must_change_password=False,
+    )
+    db.add(replacement_user)
+    db.commit()
+    assert replacement_user.id is not None
     db.close()

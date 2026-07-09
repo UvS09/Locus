@@ -24,8 +24,15 @@ class NotificationService:
     def list_for_user(self, user: User, limit: int | None = None) -> list[Notification]:
         notifications = self.notification_repo.list_for_user(user.id, limit=limit)
         for notification in notifications:
-            notification.display_message = self._display_message(notification)
+            self._decorate_notification(notification)
         return notifications
+
+    def _decorate_notification(self, notification: Notification) -> None:
+        display_message = self._display_message(notification)
+        notification.display_message = display_message
+        notification.display_title = self._title_for_message(display_message)
+        notification.display_body = display_message
+        notification.target_url = self._target_for_notification(notification)
 
     def _display_message(self, notification: Notification) -> str:
         message = notification.message
@@ -49,6 +56,38 @@ class NotificationService:
             .replace(" status changed to BLOCKED", " blocked")
             .replace(" was closed", " closed")
         )
+
+    def _title_for_message(self, message: str) -> str:
+        lowered = message.lower()
+        if "completed" in lowered:
+            return "Work Completed"
+        if "blocked" in lowered:
+            return "Blocked Work"
+        if "started" in lowered:
+            return "Work Started"
+        if "reopened" in lowered:
+            return "Work Reopened"
+        if "closed" in lowered:
+            return "Work Closed"
+        if "comment" in lowered:
+            return "New Comment"
+        return "Work Update"
+
+    def _target_for_notification(self, notification: Notification) -> str:
+        match = self._WORK_ITEM_REFERENCE.search(notification.message)
+        if match:
+            label, item_id = match.groups()
+            if label == "Project":
+                return f"/objectives/{item_id}"
+            if label == "Milestone":
+                return f"/workstreams/{item_id}"
+            if label == "Activity":
+                return f"/activities/{item_id}"
+            if label in {"Task", "Sub-task"}:
+                return f"/tasks/{item_id}"
+        if notification.task_id:
+            return f"/tasks/{notification.task_id}"
+        return "/notifications"
 
     def unread_count(self, user: User) -> int:
         return self.notification_repo.unread_count(user.id)

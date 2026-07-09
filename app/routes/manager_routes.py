@@ -6,41 +6,33 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db_session
 from app.dependencies.role_dependencies import require_roles
+from app.models.department import Department
+from app.models.division import Division
 from app.models.user import User
 from app.routes.common import build_context, redirect_with_message, templates
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.report_service import ReportService
 from app.services.task_service import TaskService
-from app.services.team_service import TeamService
 from app.services.user_service import UserService
+from app.utils.report_exports import build_manager_report_pdf, build_manager_report_xlsx
 from app.utils.enums import TaskPriority, UserRole
 from app.utils.work_item_levels import WorkItemLevel
-from app.utils.xlsx_export import build_xlsx
 
 router = APIRouter(prefix="/manager", tags=["manager"])
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
 async def manager_dashboard(request: Request, current_user: User = Depends(require_roles(UserRole.MANAGER)), db: Session = Depends(get_db_session)):
-    try:
-        team = TeamService(db).get_team_for_manager(current_user)
-        stats = ReportService(db).manager_dashboard(team.id)
-    except Exception as exc:
-        return templates.TemplateResponse(
-            "manager/dashboard.html",
-            build_context(request, current_user=current_user, db=db, team=None, stats=None, employees=[], priorities=list(TaskPriority), error=str(exc)),
-            status_code=400,
-        )
-    employees = UserService(db).list_employees()
+    stats = ReportService(db).manager_dashboard(current_user)
+    visible_members = [user for user in UserService(db).list_visible_users(current_user) if user.role != UserRole.ADMIN]
     return templates.TemplateResponse(
         "manager/dashboard.html",
         build_context(
             request,
             current_user=current_user,
             db=db,
-            team=team,
             stats=stats,
-            employees=employees,
+            visible_members=visible_members,
             priorities=list(TaskPriority),
             detail_labels={
                 WorkItemLevel.OBJECTIVE: "Project",
@@ -59,53 +51,33 @@ async def manager_reports(
     current_user: User = Depends(require_roles(UserRole.MANAGER)),
     db: Session = Depends(get_db_session),
 ):
-    try:
-        team = TeamService(db).get_team_for_manager(current_user)
-        stats = ReportService(db).manager_employee_analytics(team.id)
-    except Exception as exc:
-        return templates.TemplateResponse(
-            "manager/reports.html",
-            build_context(request, current_user=current_user, db=db, team=None, stats=None, error=str(exc)),
-            status_code=400,
-        )
+    stats = ReportService(db).manager_employee_analytics(current_user)
     return templates.TemplateResponse(
         "manager/reports.html",
-        build_context(request, current_user=current_user, db=db, team=team, stats=stats),
+        build_context(request, current_user=current_user, db=db, stats=stats),
     )
 
 
 @router.get("/reports/export")
 async def export_manager_reports(
+    format: str = Query("xlsx"),
     current_user: User = Depends(require_roles(UserRole.MANAGER)),
     db: Session = Depends(get_db_session),
 ):
-    team = TeamService(db).get_team_for_manager(current_user)
-    stats = ReportService(db).manager_employee_analytics(team.id)
-    rows = [
-        ["Employee", "Email", "Assigned Work", "Open", "In Progress", "Blocked", "Overdue", "Completed", "Completion Rate", "Average Progress"],
-    ]
-    for row in stats["employees"]:
-        employee = row["employee"]
-        rows.append(
-            [
-                employee.full_name,
-                employee.email,
-                row["assigned"],
-                row["open"],
-                row["in_progress"],
-                row["blocked"],
-                row["overdue"],
-                row["completed"],
-                f'{row["completion_rate"]}%',
-                f'{row["avg_progress"]}%',
-            ]
+    stats = ReportService(db).manager_employee_analytics(current_user)
+    safe_format = format.lower()
+    filename_base = f"employee-analytics-{date.today().isoformat()}"
+    if safe_format == "pdf":
+        return Response(
+            build_manager_report_pdf(stats),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename_base}.pdf"'},
         )
-    content = build_xlsx(rows, sheet_name="Employee Analytics")
-    filename = f"employee-analytics-{date.today().isoformat()}.xlsx"
+    content = build_manager_report_xlsx(stats)
     return Response(
         content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename_base}.xlsx"'},
     )
 
 
@@ -208,8 +180,63 @@ async def close_task(task_id: int, current_user: User = Depends(require_roles(Us
 
 @router.get("/team-members", response_class=HTMLResponse)
 async def team_members_page(request: Request, current_user: User = Depends(require_roles(UserRole.MANAGER)), db: Session = Depends(get_db_session)):
-    employees = [user for user in UserService(db).list_employees() if user.team_id == current_user.team_id]
+    division_id = request.query_params.get("division_id", "").strip()
+    department_id = request.query_params.get("department_id", "").strip()
+    user_service = UserService(db)
+    users = [user for user in user_service.list_visible_users(current_user) if user.role != UserRole.ADMIN]
+    if division_id:
+        users = [user for user in users if str(user.division_id or "") == division_id]
+    if department_id:
+        users = [user for user in users if str(user.department_id or "") == department_id]
+    users = sorted(
+        users,
+        key=lambda user: (
+            0 if user.is_active else 1,
+            -(user.designation.rank if user.designation else 0),
+            user.full_name.lower(),
+        ),
+    )
+    selected_division = db.get(Division, int(division_id)) if division_id.isdigit() else None
+    selected_department = db.get(Department, int(department_id)) if department_id.isdigit() else None
+    division_heads = [user for user in users if user.scope_level == "DIVISION_HEAD"]
+    department_groups: list[dict] = []
+    grouped_departments = {}
+    for member in users:
+        department_key = member.department_id or 0
+        if department_key not in grouped_departments:
+            grouped_departments[department_key] = {
+                "department": member.department,
+                "heads": [],
+                "members": [],
+            }
+        if member.scope_level == "DEPARTMENT_HEAD":
+            grouped_departments[department_key]["heads"].append(member)
+        elif member.scope_level != "DIVISION_HEAD":
+            grouped_departments[department_key]["members"].append(member)
+    for bucket in grouped_departments.values():
+        bucket["heads"] = sorted(
+            bucket["heads"],
+            key=lambda user: (0 if user.is_active else 1, -(user.designation.rank if user.designation else 0), user.full_name.lower()),
+        )
+        bucket["members"] = sorted(
+            bucket["members"],
+            key=lambda user: (0 if user.is_active else 1, -(user.designation.rank if user.designation else 0), user.full_name.lower()),
+        )
+        department_groups.append(bucket)
+    department_groups.sort(key=lambda bucket: (bucket["department"].name.lower() if bucket["department"] else "zzzz"))
     return templates.TemplateResponse(
         "manager/team_members.html",
-        build_context(request, current_user=current_user, db=db, employees=employees),
+        build_context(
+            request,
+            current_user=current_user,
+            db=db,
+            members=users,
+            scope_title=selected_department.name if selected_department else selected_division.name if selected_division else user_service.scope_label(current_user),
+            selected_division=selected_division,
+            selected_department=selected_department,
+            selected_division_id=division_id,
+            selected_department_id=department_id,
+            division_heads=division_heads,
+            department_groups=department_groups,
+        ),
     )

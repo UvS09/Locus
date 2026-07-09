@@ -11,6 +11,19 @@ settings = get_settings()
 ALGORITHM = "HS256"
 
 
+def validate_password_strength(password: str) -> None:
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters long.")
+    if not any(character.islower() for character in password):
+        raise ValueError("Password must include at least one lowercase letter.")
+    if not any(character.isupper() for character in password):
+        raise ValueError("Password must include at least one uppercase letter.")
+    if not any(character.isdigit() for character in password):
+        raise ValueError("Password must include at least one number.")
+    if not any(not character.isalnum() for character in password):
+        raise ValueError("Password must include at least one special character.")
+
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 

@@ -5,6 +5,12 @@
 {% block content %}
 <section class="detail-shell">
     <nav class="detail-breadcrumbs">
+        {% if current_user.role == 'ADMIN' %}
+            <a href="/admin/dashboard">Dashboard</a>
+            <span>/</span>
+            <a href="/admin/workspace">Workspace</a>
+            <span>/</span>
+        {% endif %}
         {% for crumb in breadcrumb %}
             {% if not loop.first %}<span>/</span>{% endif %}
             {% if loop.last %}

@@ -1,14 +1,16 @@
 {% set current_path = request.url.path %}
 {% set path_parts = current_path.strip('/').split('/') if current_path.strip('/') else [] %}
-{% set route_labels = {'objectives': 'Projects', 'workstreams': 'Milestones', 'activities': 'Activities', 'tasks': 'Tasks'} %}
+{% set report_label = 'Analytics' if current_user and current_user.role == 'ADMIN' else 'Reports' %}
+{% set route_labels = {'objectives': 'Projects', 'workstreams': 'Milestones', 'activities': 'Activities', 'tasks': 'Tasks', 'admin': 'Admin', 'workspace': 'Workspace', 'audit-logs': 'Audit Logs', 'users': 'Users', 'reports': report_label, 'administration': 'Administration', 'profile': 'Profile', 'settings': 'Settings', 'change-password': 'Settings'} %}
 {% set route_title = (route_labels.get(path_parts[-1], path_parts[-1].replace('-', ' ').replace('_', ' ').title()) if path_parts else 'Dashboard') %}
+{% set breadcrumb_parts = path_parts[1:] if path_parts and path_parts[0] == 'admin' else path_parts %}
 
 <header class="app-topbar">
     <div class="topbar-heading">
         <div class="topbar-breadcrumbs">
-            <a href="/dashboard">Workspace</a>
-            {% if path_parts %}
-                {% for part in path_parts %}
+            <a href="/dashboard">{% if current_user.role == 'ADMIN' %}Admin{% else %}Workspace{% endif %}</a>
+            {% if breadcrumb_parts %}
+                {% for part in breadcrumb_parts %}
                     <span class="breadcrumb-separator">/</span>
                     <span>{{ route_labels.get(part, part.replace('-', ' ').replace('_', ' ').title()) }}</span>
                 {% endfor %}
@@ -18,9 +20,9 @@
     </div>
 
     <div class="topbar-tools">
-        <form class="topbar-search" method="get" action="/objectives">
+        <form class="topbar-search" method="get" action="{% if current_user.role == 'ADMIN' %}/admin/workspace{% else %}/objectives{% endif %}">
             <i class="bi bi-search"></i>
-            <input type="search" name="q" value="{{ request.query_params.get('q', '') }}" placeholder="Search projects, milestones, activities, tasks">
+            <input type="search" name="q" value="{{ request.query_params.get('q', '') }}" placeholder="{% if current_user.role == 'ADMIN' %}Search objectives, tasks, teams{% else %}Search projects, milestones, activities, tasks{% endif %}">
         </form>
 
         {% if global_create_levels %}
@@ -48,14 +50,15 @@
                 <span class="topbar-avatar">{{ current_user.full_name[:1] }}</span>
                 <span class="topbar-user-meta">
                     <strong>{{ current_user.full_name }}</strong>
-                    <small>{{ current_user.display_role }}</small>
+                    <small>{{ current_user.display_identity_line }}</small>
                 </span>
                 <i class="bi bi-chevron-down"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
                 <li><span class="dropdown-item-text small text-secondary">{{ current_user.email }}</span></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="/change-password">Settings</a></li>
+                <li><a class="dropdown-item" href="/profile">Profile</a></li>
+                <li><a class="dropdown-item" href="/settings">Settings</a></li>
                 <li><a class="dropdown-item" href="/notifications">Notifications</a></li>
                 <li>
                     <form method="post" action="/logout" class="px-3 pt-2">

@@ -19,10 +19,7 @@ async def home(
 ) -> HTMLResponse:
     if current_user:
         return redirect_with_message("/dashboard")
-    return templates.TemplateResponse(
-        name="home.html",
-        context=build_context(request, db=db, app_name="Locus", phase_label="Enterprise work management"),
-    )
+    return redirect_with_message("/login")
 
 
 @router.get("/health")

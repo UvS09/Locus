@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <div>
+        <h1>Profile</h1>
+    </div>
+</section>
+
+<section class="account-shell mt-4">
+    <article class="form-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Personal Details</h2>
+            </div>
+        </div>
+        <form method="post" action="/profile" class="stack-form">
+            <input class="form-control" name="full_name" value="{{ current_user.full_name }}" required>
+            <input class="form-control" value="{{ current_user.email }}" disabled>
+            <button class="btn app-btn-primary align-self-start" type="submit">Save Profile</button>
+        </form>
+    </article>
+
+    <article class="table-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Organization</h2>
+            </div>
+        </div>
+        <div class="account-grid">
+            <div class="owner-lock"><span>System Role</span><strong>{{ current_user.display_role }}</strong></div>
+            <div class="owner-lock"><span>Designation</span><strong>{{ current_user.display_designation.replace(' (CIO)', '') }}</strong></div>
+            <div class="owner-lock"><span>Division</span><strong>{{ current_user.division.name if current_user.division else '-' }}</strong></div>
+            <div class="owner-lock"><span>Department</span><strong>{{ current_user.department.name if current_user.department else '-' }}</strong></div>
+            <div class="owner-lock"><span>Team</span><strong>{{ current_user.team.name if current_user.team else '-' }}</strong></div>
+            <div class="owner-lock"><span>Reports To</span><strong>{{ current_user.manager.full_name if current_user.manager else '-' }}</strong></div>
+        </div>
+    </article>
+
+    <article class="table-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Account Status</h2>
+            </div>
+        </div>
+        <div class="account-grid">
+            <div class="owner-lock"><span>Status</span><strong>{{ 'Active' if current_user.is_active else 'Inactive' }}</strong></div>
+            <div class="owner-lock"><span>Password</span><strong>{% if current_user.must_change_password %}Reset Required{% else %}Up to Date{% endif %}</strong></div>
+            <div class="owner-lock"><span>Last Login</span><strong>{{ current_user.last_login_at|long_datetime }}</strong></div>
+            <div class="owner-lock"><span>Member Since</span><strong>{{ current_user.created_at|long_date }}</strong></div>
+        </div>
+    </article>
+</section>
+{% endblock %}

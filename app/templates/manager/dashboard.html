@@ -3,14 +3,14 @@
 {% block title %}Manager Dashboard{% endblock %}
 
 {% block content %}
-<header class="dashboard-greeting">
-    <h1>Welcome back, {{ current_user.full_name }}</h1>
-</header>
-
 {% if not stats %}
-    <div class="alert alert-warning mt-3">Assign this manager to a team before using the dashboard.</div>
+    <div class="alert alert-warning mt-3">No dashboard data is available for this role yet.</div>
 {% else %}
-    <section class="snapshot-strip mt-3" aria-label="Team snapshots">
+    <header class="dashboard-greeting">
+        <h1>Welcome back, {{ current_user.full_name }}</h1>
+    </header>
+
+    <section class="snapshot-strip mt-3" aria-label="Scoped snapshots">
         <a class="snapshot-beacon beacon-members" href="/manager/team-members">
             <span class="beacon-pulse"></span>
             <strong>{{ stats.snapshots.active_members }}</strong>
@@ -33,12 +33,213 @@
         </a>
     </section>
 
-    <section class="metrics-grid dashboard-metrics mt-3">
-        <a class="metric-card metric-link" href="/objectives"><span>Projects</span><strong>{{ stats.objective_count }}</strong></a>
-        <a class="metric-card metric-link" href="/objectives"><span>Project Progress</span><strong>{{ stats.objective_progress }}%</strong></a>
-    </section>
+    {% if stats.scope_level == 'OPERATING_HEAD' %}
+        <section class="metrics-grid dashboard-metrics mt-3">
+            <a class="metric-card metric-link" href="/manager/team-members"><span>Divisions in View</span><strong>{{ stats.focus_rows|length }}</strong></a>
+            <a class="metric-card metric-link" href="/manager/team-members"><span>Departments in View</span><strong>{{ stats.department_count }}</strong></a>
+            <a class="metric-card metric-link" href="/manager/tasks?status=BLOCKED"><span>Blocked Work</span><strong>{{ stats.blocked_count }}</strong></a>
+            <a class="metric-card metric-link" href="/manager/tasks?overdue=true"><span>Overdue Work</span><strong>{{ stats.overdue_count }}</strong></a>
+        </section>
 
-    <section class="dashboard-alert-grid mt-3">
+        <section class="table-panel mt-3">
+            <div class="section-heading">
+                <div>
+                    <h2>Division Command Center</h2>
+                    <p>Click any division to inspect the reporting structure from division heads down to team members.</p>
+                </div>
+            </div>
+            <div class="division-command-grid">
+                {% for row in stats.focus_rows %}
+                    <a class="division-command-card" href="{{ row.href }}">
+                        <div class="division-command-head">
+                            <div>
+                                <strong>{{ row.name }}</strong>
+                                <small>
+                                    {% if row.leaders %}
+                                        {{ row.leaders|map(attribute='full_name')|join(', ') }}
+                                    {% else %}
+                                        Leadership not assigned yet
+                                    {% endif %}
+                                </small>
+                            </div>
+                            <span class="division-command-completion">{{ row.completion }}%</span>
+                        </div>
+                        <div class="division-command-stats">
+                            <span>{{ row.members }} members</span>
+                            <span>{{ row.projects }} projects</span>
+                            <span>{{ row.open }} open work</span>
+                            <span>{{ row.completed_today }} completed today</span>
+                        </div>
+                        <div class="division-roadmap">
+                            {% for metric in row.roadmap %}
+                                <div class="division-roadmap-row">
+                                    <div class="division-roadmap-top">
+                                        <span>{{ metric.label }}</span>
+                                        <strong>{{ metric.count }}</strong>
+                                    </div>
+                                    <div class="mini-progress"><span style="width: {{ metric.completion }}%"></span></div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="division-command-meta">
+                            <span>Task completion {{ row.task_completion }}%</span>
+                            <span>Workload {{ row.workload_percent }}%</span>
+                            <span>{{ row.blocked }} blocked</span>
+                            <span>{{ row.overdue }} overdue</span>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="executive-layout mt-3">
+            <section class="table-panel executive-analytics-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Overall Task Completion</h2>
+                        <p>Progress across projects, milestones, activities, and tasks.</p>
+                    </div>
+                </div>
+                <div class="completion-overview-stack">
+                    {% for metric in stats.overall_completion %}
+                        <div class="completion-overview-row">
+                            <div>
+                                <strong>{{ metric.label }}</strong>
+                                <small>{{ metric.count }} items</small>
+                            </div>
+                            <span>{{ metric.completion }}%</span>
+                        </div>
+                        <div class="mini-progress"><span style="width: {{ metric.completion }}%"></span></div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="table-panel executive-analytics-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Division Workload</h2>
+                        <p>Workload pressure across divisions in your view.</p>
+                    </div>
+                </div>
+                <div class="workload-overview-stack">
+                    {% for row in stats.workload_rows[:9] %}
+                        <a class="workload-overview-row" href="{{ row.href }}">
+                            <div>
+                                <strong>{{ row.name }}</strong>
+                                <small>{{ row.open }} open work across {{ row.members }} members</small>
+                            </div>
+                            <div class="workload-overview-bar">
+                                <span style="width: {{ row.workload_percent }}%"></span>
+                            </div>
+                            <em>{{ row.workload_percent }}%</em>
+                        </a>
+                    {% endfor %}
+                </div>
+            </section>
+        </section>
+    {% else %}
+        <section class="metrics-grid dashboard-metrics mt-3">
+            <a class="metric-card metric-link" href="/objectives"><span>Projects</span><strong>{{ stats.objective_count }}</strong></a>
+            <a class="metric-card metric-link" href="/manager/reports"><span>Project Progress</span><strong>{{ stats.objective_progress }}%</strong></a>
+            <a class="metric-card metric-link" href="/manager/reports"><span>Delivery Progress</span><strong>{{ stats.delivery_progress }}%</strong></a>
+            <a class="metric-card metric-link" href="/manager/team-members"><span>{{ stats.focus_label }}</span><strong>{{ stats.focus_rows|length }}</strong></a>
+        </section>
+
+        <section class="table-panel mt-3">
+            <div class="section-heading">
+                <div>
+                    <h2>
+                        {% if stats.scope_level == 'DIVISION_HEAD' %}
+                            Department Delivery Overview
+                        {% else %}
+                            Department Delivery Overview
+                        {% endif %}
+                    </h2>
+                    <p>
+                        {% if stats.scope_level == 'DIVISION_HEAD' %}
+                            Department-wise task completion trend and workload across your division.
+                        {% else %}
+                            Your department view with team-wise completion and workload.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="scope-overview-grid">
+                {% for row in stats.focus_rows %}
+                    <a class="scope-overview-card" href="{{ row.href }}">
+                        <div class="scope-overview-head">
+                            <strong>{{ row.name }}</strong>
+                            <span>{{ row.task_completion }}%</span>
+                        </div>
+                        <div class="scope-overview-kpis">
+                            <span>{{ row.members }} members</span>
+                            <span>{{ row.projects }} projects</span>
+                            <span>{{ row.open }} open work</span>
+                            <span>{{ row.completed_today }} completed today</span>
+                        </div>
+                        <div class="scope-overview-track">
+                            <label>Task Completion</label>
+                            <div class="mini-progress"><span style="width: {{ row.task_completion }}%"></span></div>
+                        </div>
+                        <div class="scope-overview-track">
+                            <label>Workload</label>
+                            <div class="mini-progress workload-progress"><span style="width: {{ row.workload_percent }}%"></span></div>
+                        </div>
+                    </a>
+                {% else %}
+                    <div class="empty-table">No scoped analytics available yet.</div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="executive-layout mt-3">
+            <section class="table-panel executive-analytics-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Completion Overview</h2>
+                    </div>
+                </div>
+                <div class="completion-overview-stack">
+                    {% for metric in stats.overall_completion %}
+                        <div class="completion-overview-row">
+                            <div>
+                                <strong>{{ metric.label }}</strong>
+                                <small>{{ metric.count }} items</small>
+                            </div>
+                            <span>{{ metric.completion }}%</span>
+                        </div>
+                        <div class="mini-progress"><span style="width: {{ metric.completion }}%"></span></div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="table-panel executive-analytics-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>{% if stats.scope_level == 'DIVISION_HEAD' %}Department Workload{% else %}Team Workload{% endif %}</h2>
+                    </div>
+                </div>
+                <div class="workload-overview-stack">
+                    {% for row in stats.workload_rows %}
+                        <a class="workload-overview-row" href="{{ row.href }}">
+                            <div>
+                                <strong>{{ row.name }}</strong>
+                                <small>{{ row.open }} open work across {{ row.members }} members</small>
+                            </div>
+                            <div class="workload-overview-bar">
+                                <span style="width: {{ row.workload_percent }}%"></span>
+                            </div>
+                            <em>{{ row.workload_percent }}%</em>
+                        </a>
+                    {% else %}
+                        <div class="empty-table">No workload data available yet.</div>
+                    {% endfor %}
+                </div>
+            </section>
+        </section>
+    {% endif %}
+
+    <section class="dashboard-alert-grid dashboard-alert-grid-wide mt-3">
         <section class="form-panel">
             <div class="section-heading">
                 <div>
@@ -73,6 +274,24 @@
                     </a>
                 {% else %}
                     <p class="text-secondary mb-0">No overdue work items.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="form-panel">
+            <div class="section-heading">
+                <div>
+                    <h2>Upcoming Deadlines</h2>
+                </div>
+            </div>
+            <div class="list-stack">
+                {% for item in stats.upcoming_deadlines %}
+                    <a class="list-row linked-row" href="{{ detail_paths[item.level].format(id=item.id) }}">
+                        <span>{{ item.title }}</span>
+                        <strong>{{ item.due_date|long_date }}</strong>
+                    </a>
+                {% else %}
+                    <p class="text-secondary mb-0">No upcoming deadlines in view.</p>
                 {% endfor %}
             </div>
         </section>

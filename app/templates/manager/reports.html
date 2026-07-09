@@ -8,7 +8,10 @@
         <h1>Employee Analytics</h1>
     </div>
     {% if stats %}
-        <a class="btn app-btn-primary" href="/manager/reports/export"><i class="bi bi-file-earmark-spreadsheet"></i> Download Excel</a>
+        <div class="hero-actions">
+            <a class="btn app-btn-primary" href="/manager/reports/export?format=xlsx"><i class="bi bi-file-earmark-spreadsheet"></i> Download Excel</a>
+            <a class="btn btn-outline-dark detail-action-button" href="/manager/reports/export?format=pdf"><i class="bi bi-filetype-pdf"></i> Download PDF</a>
+        </div>
     {% endif %}
 </section>
 

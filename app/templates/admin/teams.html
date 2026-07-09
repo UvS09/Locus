@@ -1,63 +1,141 @@
 {% extends "base.html" %}
 
-{% block title %}Teams{% endblock %}
+{% block title %}Administration{% endblock %}
 
 {% block content %}
-<div class="content-grid">
-    <aside class="content-side">
-        <section class="form-panel">
-            <div class="section-heading">
-                <div>
-                    <h2>Create Team</h2>
-                </div>
+<section class="admin-command-hero">
+    <div>
+        <span class="eyebrow">System Configuration</span>
+        <h1>Administration</h1>
+    </div>
+</section>
+
+<section class="admin-admin-grid mt-4">
+    <article class="table-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Create Organization Structure</h2>
             </div>
-            <form method="post" action="/admin/teams" class="stack-form">
-                <input class="form-control" name="name" placeholder="Team name" required>
-                <textarea class="form-control" name="description" placeholder="Description"></textarea>
-                <select class="form-select" name="manager_id">
-                    <option value="">No manager yet</option>
+        </div>
+        <form method="post" action="/admin/organization/create" class="stack-form admin-org-create-form" data-org-create-form>
+            <div class="admin-form-grid">
+                <select class="form-select" name="entity_type" data-org-type required>
+                    <option value="">Create</option>
+                    <option value="division">Division</option>
+                    <option value="department">Department</option>
+                    <option value="team">Team</option>
+                </select>
+                <input class="form-control" name="name" placeholder="Name" required>
+                <select class="form-select is-hidden-field" name="division_id" data-org-division>
+                    <option value="">Choose division</option>
+                    {% for division in divisions %}<option value="{{ division.id }}">{{ division.name }}</option>{% endfor %}
+                </select>
+                <select class="form-select is-hidden-field" name="department_id" data-org-department>
+                    <option value="">Choose department</option>
+                    {% for department in departments %}<option value="{{ department.id }}">{{ department.name }}{% if department.division %} · {{ department.division.name }}{% endif %}</option>{% endfor %}
+                </select>
+                <select class="form-select is-hidden-field" name="manager_id" data-org-manager>
+                    <option value="">Assign manager</option>
                     {% for manager in managers %}<option value="{{ manager.id }}">{{ manager.full_name }}</option>{% endfor %}
                 </select>
-                <button class="btn app-btn-primary" type="submit">Create Team</button>
-            </form>
-        </section>
-    </aside>
-    <div class="content-main">
-        <section class="table-panel">
-            <div class="section-heading">
-                <div>
-                    <h1>Teams</h1>
-                </div>
             </div>
+            <textarea class="form-control" name="description" rows="3" placeholder="Description"></textarea>
+            <div class="admin-form-actions">
+                <button class="btn app-btn-primary align-self-start" type="submit">Create</button>
+            </div>
+        </form>
+        <div class="admin-org-summary">
+            <article class="nested-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Divisions</h2>
+                    </div>
+                </div>
+                <div class="admin-list-stack">
+                    {% for division in divisions %}
+                        <form method="post" action="/admin/divisions/{{ division.id }}/delete" class="admin-list-row" onsubmit="return confirm('Delete division {{ division.name }} and everything under it?');">
+                            <span class="admin-list-label">{{ division.name }}</span>
+                            <button class="admin-inline-delete" type="submit" aria-label="Delete {{ division.name }}">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </form>
+                    {% else %}
+                        <span class="empty-table">No divisions yet.</span>
+                    {% endfor %}
+                </div>
+            </article>
+            <article class="nested-panel">
+                <div class="section-heading">
+                    <div>
+                        <h2>Departments</h2>
+                    </div>
+                </div>
+                <div class="admin-list-stack">
+                    {% for department in departments %}
+                        <form method="post" action="/admin/departments/{{ department.id }}/delete" class="admin-list-row" onsubmit="return confirm('Delete department {{ department.name }} and all teams under it?');">
+                            <span class="admin-list-label">{{ department.name }}{% if department.division %} · {{ department.division.name }}{% endif %}</span>
+                            <button class="admin-inline-delete" type="submit" aria-label="Delete {{ department.name }}">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </form>
+                    {% else %}
+                        <span class="empty-table">No departments yet.</span>
+                    {% endfor %}
+                </div>
+            </article>
+        </div>
+    </article>
+
+    <article class="table-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Teams</h2>
+            </div>
+        </div>
+        <div class="admin-team-stack">
             {% for team in teams %}
-                <div class="nested-panel">
+                <section class="nested-panel">
                     <div class="section-heading">
                         <div>
                             <h2>{{ team.name }}</h2>
                             <p>{{ team.description or "No description yet." }}</p>
+                            <small class="text-secondary">
+                                {{ team.department.name if team.department else "No department" }}
+                                {% if team.department and team.department.division %} · {{ team.department.division.name }}{% endif %}
+                            </small>
                         </div>
-                        <span class="status-badge status-in_progress">{{ team.manager.full_name if team.manager else "No manager" }}</span>
+                        <div class="admin-card-actions">
+                            <span class="role-pill">{{ team.manager.full_name if team.manager else "No manager" }}</span>
+                            <form method="post" action="/admin/teams/{{ team.id }}/delete" onsubmit="return confirm('Delete team {{ team.name }} and its linked work?');">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                            </form>
+                        </div>
                     </div>
-                    <form method="post" action="/admin/teams/{{ team.id }}/assign-manager" class="two-up form-inline mb-3">
-                        <select class="form-select" name="manager_id">
-                            {% for manager in managers %}<option value="{{ manager.id }}" {% if team.manager_id == manager.id %}selected{% endif %}>{{ manager.full_name }}</option>{% endfor %}
-                        </select>
-                        <button class="btn btn-outline-primary" type="submit">Assign Manager</button>
-                    </form>
-                    <form method="post" action="/admin/teams/{{ team.id }}/assign-members" class="stack-form">
-                        <label class="form-label mb-0">Assign Employees</label>
-                        <select class="form-select" multiple name="user_ids">
-                            {% for employee in employees %}
-                                <option value="{{ employee.id }}" {% if employee.team_id == team.id %}selected{% endif %}>{{ employee.full_name }}</option>
-                            {% endfor %}
-                        </select>
-                        <button class="btn btn-outline-secondary align-self-start" type="submit">Save Team Members</button>
-                    </form>
-                </div>
+                    <div class="admin-team-actions">
+                        <form method="post" action="/admin/teams/{{ team.id }}/assign-manager" class="stack-form">
+                            <label class="form-label mb-0">Assign Manager</label>
+                            <div class="admin-inline-actions">
+                                <select class="form-select" name="manager_id">
+                                    {% for manager in managers %}<option value="{{ manager.id }}" {% if team.manager_id == manager.id %}selected{% endif %}>{{ manager.full_name }}</option>{% endfor %}
+                                </select>
+                                <button class="btn btn-outline-primary" type="submit">Save Manager</button>
+                            </div>
+                        </form>
+                        <form method="post" action="/admin/teams/{{ team.id }}/assign-members" class="stack-form">
+                            <label class="form-label mb-0">Assign Employees</label>
+                            <select class="form-select admin-member-select" multiple name="user_ids">
+                                {% for employee in employees %}
+                                    <option value="{{ employee.id }}" {% if employee.team_id == team.id %}selected{% endif %}>{{ employee.full_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-outline-secondary align-self-start" type="submit">Save Members</button>
+                        </form>
+                    </div>
+                </section>
             {% else %}
                 <div class="empty-table">No teams created yet.</div>
             {% endfor %}
-        </section>
-    </div>
-</div>
+        </div>
+    </article>
+</section>
 {% endblock %}

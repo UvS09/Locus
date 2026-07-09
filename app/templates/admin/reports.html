@@ -1,22 +1,142 @@
 {% extends "base.html" %}
 
-{% block title %}Reports{% endblock %}
+{% block title %}Analytics{% endblock %}
 
 {% block content %}
-<section class="page-hero">
+<section class="admin-command-hero">
     <div>
-        <h1 class="mb-2">Portfolio Reporting</h1>
+        <span class="eyebrow">User Analytics</span>
+        <h1>Analytics</h1>
+    </div>
+    <div class="hero-actions">
+        <a class="btn app-btn-primary" href="/admin/reports/export?format=pdf"><i class="bi bi-filetype-pdf"></i> PDF</a>
+        <a class="btn btn-outline-dark detail-action-button" href="/admin/reports/export?format=xlsx"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+        <a class="btn btn-outline-dark detail-action-button" href="/admin/reports/export?format=csv"><i class="bi bi-filetype-csv"></i> CSV</a>
     </div>
 </section>
 
 <section class="metrics-grid mt-4">
-    <article class="metric-card"><span>Total Users</span><strong>{{ stats.total_users }}</strong></article>
-    <article class="metric-card"><span>Total Projects</span><strong>{{ stats.total_objectives }}</strong></article>
-    <article class="metric-card"><span>Total Milestones</span><strong>{{ stats.total_workstreams }}</strong></article>
-    <article class="metric-card"><span>Total Activities</span><strong>{{ stats.total_activities }}</strong></article>
-    <article class="metric-card"><span>Total Tasks</span><strong>{{ stats.total_task_items }}</strong></article>
-    <article class="metric-card"><span>Total Sub-tasks</span><strong>{{ stats.total_subtasks }}</strong></article>
-    <article class="metric-card"><span>Active Work</span><strong>{{ stats.active_tasks }}</strong></article>
-    <article class="metric-card"><span>Portfolio Progress</span><strong>{{ stats.portfolio_progress }}%</strong></article>
+    <article class="metric-card"><span>Total Users</span><strong>{{ stats.user_summary.total_users }}</strong></article>
+    <article class="metric-card"><span>Active Users</span><strong>{{ stats.user_summary.active_users }}</strong></article>
+    <article class="metric-card"><span>Managers</span><strong>{{ stats.user_summary.managers }}</strong></article>
+    <article class="metric-card"><span>Employees</span><strong>{{ stats.user_summary.employees }}</strong></article>
+    <article class="metric-card"><span>Operating Heads</span><strong>{{ stats.user_summary.operating_heads }}</strong></article>
+    <article class="metric-card"><span>Overdue Work</span><strong>{{ stats.summary.overdue_work }}</strong></article>
+</section>
+
+<section class="admin-overview-grid mt-4">
+    <article class="table-panel">
+        <div class="section-heading">
+            <div>
+                <h2>User Completion Trends</h2>
+            </div>
+        </div>
+        <div class="bar-report-list">
+            {% for point in stats.trends %}
+                <div class="bar-report-row">
+                    <span>{{ point.date|long_date }}</span>
+                    <div class="bar-track"><div class="bar-fill bar-fill-red" style="width: {{ [point.completed * 10, 100]|min }}%"></div></div>
+                    <strong>{{ point.completed }}</strong>
+                </div>
+            {% endfor %}
+        </div>
+    </article>
+
+    <article class="table-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Workforce Attention Queue</h2>
+            </div>
+        </div>
+        <div class="list-stack">
+            {% for item in stats.overdue_items %}
+                <div class="list-row">
+                    <span><a href="{{ '/tasks/' ~ item.id if item.level.value == 'TASK' else '/activities/' ~ item.id if item.level.value == 'ACTIVITY' else '/workstreams/' ~ item.id if item.level.value == 'WORKSTREAM' else '/objectives/' ~ item.id }}">{{ item.title }}</a></span>
+                    <small>{{ item.team.name if item.team else "No team" }} · {{ item.due_date|long_date }}</small>
+                </div>
+            {% else %}
+                <div class="empty-table">No overdue work right now.</div>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+
+<section class="table-panel mt-4">
+    <div class="section-heading">
+        <div>
+            <h2>Employee Productivity</h2>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table enterprise-table align-middle">
+            <thead><tr><th>Employee</th><th>Assigned</th><th>Completed</th><th>Overdue</th><th>Average Progress</th><th>Completion Rate</th></tr></thead>
+            <tbody>
+                {% for row in stats.employee_productivity %}
+                    <tr>
+                        <td>{{ row.user.full_name }}</td>
+                        <td>{{ row.assigned }}</td>
+                        <td>{{ row.completed }}</td>
+                        <td>{{ row.overdue }}</td>
+                        <td>{{ row.avg_progress }}%</td>
+                        <td>{{ row.completion_rate }}%</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="6" class="empty-table">No employee productivity data yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="table-panel mt-4">
+    <div class="section-heading">
+        <div>
+            <h2>Manager Productivity</h2>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table enterprise-table align-middle">
+            <thead><tr><th>Manager</th><th>Team</th><th>Open Work</th><th>Overdue</th><th>Completion Rate</th></tr></thead>
+            <tbody>
+                {% for row in stats.manager_productivity %}
+                    <tr>
+                        <td>{{ row.user.full_name }}</td>
+                        <td>{{ row.team_name }}</td>
+                        <td>{{ row.open_work }}</td>
+                        <td>{{ row.overdue }}</td>
+                        <td>{{ row.completion_rate }}%</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="5" class="empty-table">No manager productivity data yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="table-panel mt-4">
+    <div class="section-heading">
+        <div>
+            <h2>Team Performance</h2>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table enterprise-table align-middle">
+            <thead><tr><th>Team</th><th>Active Members</th><th>Objective Completion</th><th>Task Completion</th><th>Overdue</th></tr></thead>
+            <tbody>
+                {% for row in stats.team_performance %}
+                    <tr>
+                        <td>{{ row.team.name }}</td>
+                        <td>{{ row.active_members }}</td>
+                        <td>{{ row.objective_completion }}%</td>
+                        <td>{{ row.task_completion }}%</td>
+                        <td>{{ row.overdue }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="5" class="empty-table">No team performance data yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </section>
 {% endblock %}

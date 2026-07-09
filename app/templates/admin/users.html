@@ -5,9 +5,12 @@
 {% block content %}
 <section class="admin-command-hero">
     <div>
-        <h1>Manage Users & Roles</h1>
+        <span class="eyebrow">Identity Management</span>
+        <h1>Users</h1>
     </div>
-    <a class="btn app-btn-primary" href="/admin/dashboard"><i class="bi bi-speedometer2"></i> Admin Dashboard</a>
+    <div class="hero-actions">
+        <a class="btn btn-outline-dark detail-action-button" href="/admin/dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a>
+    </div>
 </section>
 
 <section class="admin-user-actions mt-4">
@@ -17,54 +20,57 @@
                 <h2>Create User</h2>
             </div>
         </div>
-        <form method="post" action="/admin/users" class="stack-form">
+        <form method="post" action="/admin/users" class="stack-form admin-progressive-form" data-user-form>
             <div class="two-up">
                 <input class="form-control" name="full_name" placeholder="Full name" required>
                 <input class="form-control" type="email" name="email" placeholder="Email" required>
             </div>
-            <div class="two-up">
-                <select class="form-select" name="role_key" required>
-                    {% for role in role_options %}
-                        <option value="{{ role.value }}">{{ role.label }}{% if role.value.startswith('custom:') %} ({{ role.access_level }} access){% endif %}</option>
-                    {% endfor %}
-                </select>
-                <select class="form-select" name="team_id">
-                    <option value="">No team</option>
-                    {% for team in teams %}<option value="{{ team.id }}">{{ team.name }}</option>{% endfor %}
-                </select>
+            <div class="admin-form-grid">
+                <div class="progressive-field">
+                    <select class="form-select" name="role_key" data-role-select required>
+                        <option value="">Select system role</option>
+                        {% for role in role_options %}
+                            <option value="{{ role.value }}" data-access-level="{{ role.access_level }}">{{ role.label }}{% if role.value.startswith('custom:') %} ({{ role.access_level }} access){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="progressive-field is-hidden-field" data-stage="designation">
+                    <select class="form-select" name="designation_id" data-designation-select disabled>
+                        <option value="">Select designation</option>
+                        {% for designation in designations %}<option value="{{ designation.id }}" data-scope="{{ designation.scope_level.value }}">{{ designation.name.replace(' (CIO)', '') }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="progressive-field is-hidden-field" data-stage="division">
+                    <select class="form-select" name="division_id" disabled>
+                        <option value="">Division</option>
+                        {% for division in divisions %}<option value="{{ division.id }}">{{ division.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="progressive-field is-hidden-field" data-stage="department">
+                    <select class="form-select" name="department_id" disabled>
+                        <option value="">Department</option>
+                        {% for department in departments %}<option value="{{ department.id }}">{{ department.name }}</option>{% endfor %}
+                    </select>
+                </div>
             </div>
-            <button class="btn app-btn-primary" type="submit">Create User</button>
-        </form>
-    </article>
-
-    <article class="form-panel admin-action-card">
-        <div class="section-heading">
-            <div>
-                <h2>Create Role</h2>
+            <div class="admin-form-actions">
+                <button class="btn app-btn-primary" type="submit">Create User</button>
             </div>
-        </div>
-        <form method="post" action="/admin/roles" class="stack-form">
-            <input class="form-control" name="name" placeholder="Role name, e.g. Supervisor" required>
-            <select class="form-select" name="access_level" required>
-                {% for role in roles %}<option value="{{ role }}">{{ role }} access</option>{% endfor %}
-            </select>
-            <textarea class="form-control" name="description" rows="3" placeholder="Optional description"></textarea>
-            <button class="btn app-btn-primary" type="submit">Create Role</button>
         </form>
     </article>
 </section>
 
 <section class="admin-role-strip mt-4">
     <article>
-        <span>System Roles</span>
-        <strong>ADMIN, MANAGER, EMPLOYEE</strong>
+        <span>Total Users</span>
+        <strong>{{ users|length }}</strong>
     </article>
     <article>
         <span>Custom Roles</span>
         <strong>{{ custom_roles|length }}</strong>
     </article>
     <article>
-        <span>Available Teams</span>
+        <span>Teams</span>
         <strong>{{ teams|length }}</strong>
     </article>
 </section>
@@ -75,6 +81,25 @@
             <h1>Manage Users</h1>
         </div>
     </div>
+    <form class="stack-form admin-filter-row" method="get" action="/admin/users">
+        <input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Search name, email, or role">
+        <div class="admin-filter-grid">
+            <select class="form-select" name="role">
+                <option value="">All roles</option>
+                {% for role in roles %}<option value="{{ role.value }}" {% if selected_role == role.value %}selected{% endif %}>{{ role.value }}</option>{% endfor %}
+            </select>
+            <select class="form-select" name="status">
+                <option value="">All statuses</option>
+                <option value="active" {% if selected_status == 'active' %}selected{% endif %}>Active</option>
+                <option value="inactive" {% if selected_status == 'inactive' %}selected{% endif %}>Inactive</option>
+            </select>
+            <select class="form-select" name="team_id">
+                <option value="">All teams</option>
+                {% for team in teams %}<option value="{{ team.id }}" {% if selected_team_id == team.id %}selected{% endif %}>{{ team.name }}</option>{% endfor %}
+            </select>
+            <button class="btn btn-outline-secondary" type="submit">Apply Filters</button>
+        </div>
+    </form>
     <div class="table-responsive">
         <table class="table enterprise-table align-middle">
             <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Access</th><th>Team</th><th>Status</th><th>Actions</th></tr></thead>
@@ -83,32 +108,55 @@
                     <tr>
                         <td>{{ user.full_name }}</td>
                         <td>{{ user.email }}</td>
-                        <td><span class="role-pill">{{ user.display_role }}</span></td>
-                        <td>{{ user.role }}</td>
+                        <td><span class="role-pill">{{ user.display_designation.replace(' (CIO)', '') }}</span></td>
+                        <td>{{ user.role.value }}</td>
                         <td>{{ user.team.name if user.team else "-" }}</td>
                         <td>{{ "Active" if user.is_active else "Inactive" }}</td>
                         <td>
                             <details class="admin-row-details">
                                 <summary>Edit</summary>
-                                <form method="post" action="/admin/users/{{ user.id }}" class="mt-2 stack-form compact-form">
+                                <form method="post" action="/admin/users/{{ user.id }}" class="mt-2 stack-form compact-form admin-progressive-form" data-user-form>
                                     <input class="form-control form-control-sm" name="full_name" value="{{ user.full_name }}" required>
-                                    <select class="form-select form-select-sm" name="role_key" required>
-                                        {% for role in role_options %}
-                                            {% set selected_role = ('custom:' ~ user.custom_role_id) if user.custom_role_id else ('system:' ~ user.role) %}
-                                            <option value="{{ role.value }}" {% if role.value == selected_role %}selected{% endif %}>
-                                                {{ role.label }}{% if role.value.startswith('custom:') %} ({{ role.access_level }} access){% endif %}
-                                            </option>
-                                        {% endfor %}
-                                    </select>
-                                    <select class="form-select form-select-sm" name="team_id">
-                                        <option value="">No team</option>
-                                        {% for team in teams %}<option value="{{ team.id }}" {% if user.team_id == team.id %}selected{% endif %}>{{ team.name }}</option>{% endfor %}
-                                    </select>
+                                    <input class="form-control form-control-sm" type="email" name="email" value="{{ user.email }}" required>
+                                    <div class="admin-form-grid">
+                                        <div class="progressive-field">
+                                            <select class="form-select form-select-sm" name="role_key" data-role-select required>
+                                                {% for role in role_options %}
+                                                    {% set selected_role_value = ('custom:' ~ user.custom_role_id) if user.custom_role_id else ('system:' ~ user.role) %}
+                                                    <option value="{{ role.value }}" data-access-level="{{ role.access_level }}" {% if role.value == selected_role_value %}selected{% endif %}>
+                                                        {{ role.label }}{% if role.value.startswith('custom:') %} ({{ role.access_level }} access){% endif %}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="progressive-field" data-stage="designation">
+                                            <select class="form-select form-select-sm" name="designation_id" data-designation-select>
+                                                {% for designation in designations %}
+                                                    <option value="{{ designation.id }}" data-scope="{{ designation.scope_level.value }}" {% if user.designation_id == designation.id %}selected{% endif %}>{{ designation.name.replace(' (CIO)', '') }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="progressive-field" data-stage="division">
+                                            <select class="form-select form-select-sm" name="division_id">
+                                                <option value="">No division</option>
+                                                {% for division in divisions %}<option value="{{ division.id }}" {% if user.division_id == division.id %}selected{% endif %}>{{ division.name }}</option>{% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="progressive-field" data-stage="department">
+                                            <select class="form-select form-select-sm" name="department_id">
+                                                <option value="">No department</option>
+                                                {% for department in departments %}<option value="{{ department.id }}" {% if user.department_id == department.id %}selected{% endif %}>{{ department.name }}</option>{% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
                                     <label class="form-check"><input class="form-check-input" type="checkbox" name="is_active" value="true" {% if user.is_active %}checked{% endif %}> Active</label>
                                     <button class="btn btn-sm btn-outline-primary" type="submit">Save</button>
                                 </form>
                                 <form method="post" action="/admin/users/{{ user.id }}/deactivate" class="mt-2">
                                     <button class="btn btn-sm btn-outline-danger" type="submit">Deactivate</button>
+                                </form>
+                                <form method="post" action="/admin/users/{{ user.id }}/delete" class="mt-2">
+                                    <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Delete {{ user.email }} permanently? This removes the account and frees the email for reuse.');">Delete User</button>
                                 </form>
                                 {% if allow_impersonation and user.role != "ADMIN" %}
                                     <form method="post" action="/admin/users/{{ user.id }}/impersonate" class="mt-2">

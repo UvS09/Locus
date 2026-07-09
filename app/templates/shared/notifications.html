@@ -3,33 +3,52 @@
 {% block title %}Notifications{% endblock %}
 
 {% block content %}
-<section class="table-panel">
-    <div class="section-heading">
-        <div>
-            <h1>Notifications</h1>
-        </div>
-        <form method="post" action="/notifications/read-all">
-            <button class="btn btn-outline-primary" type="submit">Mark All Read</button>
-        </form>
-    </div>
-    <div class="list-stack">
-        {% for notification in notifications %}
-            <div class="list-row notification-row">
-                <div class="notification-copy">{{ notification.display_message }}</div>
-                <div class="notification-meta">
-                    <small class="text-secondary">{{ notification.created_at|long_datetime }}</small>
-                {% if not notification.is_read %}
-                    <form method="post" action="/notifications/{{ notification.id }}/read">
-                        <button class="btn btn-sm btn-outline-secondary" type="submit">Mark Read</button>
-                    </form>
-                {% else %}
-                    <span class="status-badge status-completed">Read</span>
-                {% endif %}
-                </div>
+{% set unread_total = notifications|selectattr('is_read', 'equalto', False)|list|length %}
+
+<section class="notification-shell">
+    <section class="table-panel">
+        <div class="section-heading">
+            <div>
+                <span class="eyebrow">Inbox</span>
+                <h1>Notifications</h1>
+                <p>Track work updates with clearer titles, better timestamps, and direct links back to the affected item.</p>
             </div>
-        {% else %}
-            <div class="empty-table">No notifications yet.</div>
-        {% endfor %}
-    </div>
+            <form method="post" action="/notifications/read-all">
+                <button class="btn btn-outline-primary" type="submit">Mark All Read</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="notification-overview">
+        <article class="metric-card"><span>Total</span><strong>{{ notifications|length }}</strong></article>
+        <article class="metric-card"><span>Unread</span><strong>{{ unread_total }}</strong></article>
+        <article class="metric-card"><span>Read</span><strong>{{ notifications|length - unread_total }}</strong></article>
+    </section>
+
+    <section class="table-panel">
+        <div class="list-stack">
+            {% for notification in notifications %}
+                <div class="list-row notification-row {% if not notification.is_read %}notification-unread{% endif %}">
+                    <div class="notification-copy">
+                        <strong>{{ notification.display_title }}</strong>
+                        <p>{{ notification.display_body }}</p>
+                        <a class="section-link" href="{{ notification.target_url }}">Open related item</a>
+                    </div>
+                    <div class="notification-meta">
+                        <small class="text-secondary">{{ notification.created_at|long_datetime }}</small>
+                        {% if not notification.is_read %}
+                            <form method="post" action="/notifications/{{ notification.id }}/read">
+                                <button class="btn btn-sm btn-outline-secondary" type="submit">Mark Read</button>
+                            </form>
+                        {% else %}
+                            <span class="status-badge status-completed">Read</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-table">No notifications yet.</div>
+            {% endfor %}
+        </div>
+    </section>
 </section>
 {% endblock %}

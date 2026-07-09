@@ -1,6 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.models.department import Department
+from app.models.division import Division
+from app.models.team import Team
 from app.models.work_item import WorkItem
 from app.utils.enums import TaskStatus
 from app.utils.work_item_levels import WorkItemLevel, WorkItemStatus
@@ -10,6 +13,10 @@ class WorkItemRepository:
     def __init__(self, db: Session):
         self.db = db
 
+    @staticmethod
+    def _team_load():
+        return selectinload(WorkItem.team).selectinload(Team.department).selectinload(Department.division)
+
     def get_by_id(self, work_item_id: int) -> WorkItem | None:
         stmt = (
             select(WorkItem)
@@ -18,7 +25,7 @@ class WorkItemRepository:
                 selectinload(WorkItem.parent),
                 selectinload(WorkItem.assignee),
                 selectinload(WorkItem.creator),
-                selectinload(WorkItem.team),
+                self._team_load(),
             )
             .where(WorkItem.id == work_item_id)
         )
@@ -27,7 +34,7 @@ class WorkItemRepository:
     def list_all(self) -> list[WorkItem]:
         stmt = (
             select(WorkItem)
-            .options(selectinload(WorkItem.assignee), selectinload(WorkItem.creator), selectinload(WorkItem.parent), selectinload(WorkItem.team))
+            .options(selectinload(WorkItem.assignee), selectinload(WorkItem.creator), selectinload(WorkItem.parent), self._team_load())
             .order_by(WorkItem.created_at.desc())
         )
         return self.db.scalars(stmt).all()
@@ -35,7 +42,7 @@ class WorkItemRepository:
     def list_for_team(self, team_id: int) -> list[WorkItem]:
         stmt = (
             select(WorkItem)
-            .options(selectinload(WorkItem.assignee), selectinload(WorkItem.creator), selectinload(WorkItem.parent), selectinload(WorkItem.team))
+            .options(selectinload(WorkItem.assignee), selectinload(WorkItem.creator), selectinload(WorkItem.parent), self._team_load())
             .where(WorkItem.team_id == team_id)
             .order_by(WorkItem.created_at.desc())
         )
@@ -44,7 +51,7 @@ class WorkItemRepository:
     def list_for_assignee(self, user_id: int) -> list[WorkItem]:
         stmt = (
             select(WorkItem)
-            .options(selectinload(WorkItem.assignee), selectinload(WorkItem.creator), selectinload(WorkItem.parent), selectinload(WorkItem.team))
+            .options(selectinload(WorkItem.assignee), selectinload(WorkItem.creator), selectinload(WorkItem.parent), self._team_load())
             .where(WorkItem.assigned_to_id == user_id)
             .order_by(WorkItem.created_at.desc())
         )
@@ -53,7 +60,7 @@ class WorkItemRepository:
     def list_children(self, parent_id: int) -> list[WorkItem]:
         stmt = (
             select(WorkItem)
-            .options(selectinload(WorkItem.assignee), selectinload(WorkItem.creator), selectinload(WorkItem.parent), selectinload(WorkItem.team))
+            .options(selectinload(WorkItem.assignee), selectinload(WorkItem.creator), selectinload(WorkItem.parent), self._team_load())
             .where(WorkItem.parent_id == parent_id)
             .order_by(WorkItem.created_at.asc())
         )
@@ -69,7 +76,7 @@ class WorkItemRepository:
     ) -> list[WorkItem]:
         stmt = (
             select(WorkItem)
-            .options(selectinload(WorkItem.assignee), selectinload(WorkItem.creator), selectinload(WorkItem.parent), selectinload(WorkItem.team))
+            .options(selectinload(WorkItem.assignee), selectinload(WorkItem.creator), selectinload(WorkItem.parent), self._team_load())
             .where(WorkItem.level == level)
             .order_by(WorkItem.updated_at.desc())
         )

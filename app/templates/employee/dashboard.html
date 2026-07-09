@@ -38,6 +38,62 @@
     <a class="metric-card metric-link" href="/employee/tasks?status=IN_PROGRESS"><span>In Progress</span><strong>{{ stats.in_progress_count }}</strong></a>
     <a class="metric-card metric-link" href="/employee/tasks?status=BLOCKED"><span>Blocked</span><strong>{{ stats.blocked_count }}</strong></a>
     <a class="metric-card metric-link" href="/employee/tasks?status=COMPLETED"><span>Completed</span><strong>{{ stats.completed_count }}</strong></a>
+    <article class="metric-card"><span>Completion Rate</span><strong>{{ stats.completion_rate }}%</strong></article>
+    <article class="metric-card"><span>Average Progress</span><strong>{{ stats.avg_progress }}%</strong></article>
+</section>
+
+<section class="executive-layout mt-3">
+    <section class="table-panel executive-analytics-panel">
+        <div class="section-heading">
+            <div>
+                <h2>My Analytics</h2>
+                <p>Personal completion signals based on assigned work.</p>
+            </div>
+        </div>
+        <div class="completion-overview-stack">
+            <div class="completion-overview-row">
+                <div>
+                    <strong>Task Completion</strong>
+                    <small>{{ stats.completed_count }} completed items</small>
+                </div>
+                <span>{{ stats.completion_rate }}%</span>
+            </div>
+            <div class="mini-progress"><span style="width: {{ stats.completion_rate }}%"></span></div>
+            <div class="completion-overview-row">
+                <div>
+                    <strong>Average Progress</strong>
+                    <small>Across your assigned delivery work</small>
+                </div>
+                <span>{{ stats.avg_progress }}%</span>
+            </div>
+            <div class="mini-progress"><span style="width: {{ stats.avg_progress }}%"></span></div>
+            <div class="completion-overview-row">
+                <div>
+                    <strong>Department Open Work</strong>
+                    <small>Live department workload in your current scope</small>
+                </div>
+                <span>{{ stats.department_open_work }}</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="table-panel executive-analytics-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Upcoming Deadlines</h2>
+            </div>
+        </div>
+        <div class="list-stack">
+            {% for item in stats.upcoming_deadlines %}
+                <a class="list-row linked-row" href="{{ detail_paths[item.level].format(id=item.id) }}">
+                    <span>{{ item.title }}</span>
+                    <strong>{{ item.due_date|long_date }}</strong>
+                </a>
+            {% else %}
+                <p class="text-secondary mb-0">No upcoming due items.</p>
+            {% endfor %}
+        </div>
+    </section>
 </section>
 
 <div class="content-grid mt-3">
@@ -75,23 +131,40 @@
             </div>
         </section>
 
+        <section class="table-panel mt-3">
+            <div class="section-heading">
+                <div>
+                    <h2>My Recent Updates</h2>
+                </div>
+            </div>
+            <div class="list-stack">
+                {% for item in stats.recent_updates %}
+                    <a class="list-row linked-row" href="{{ detail_paths[item.level].format(id=item.id) }}">
+                        <span>{{ item.title }}</span>
+                        <small>{{ item.project_path }}</small>
+                    </a>
+                {% else %}
+                    <div class="empty-table">No recent updates on your assigned work.</div>
+                {% endfor %}
+            </div>
+        </section>
     </div>
 
     <aside class="content-side">
         <section class="form-panel">
             <div class="section-heading">
                 <div>
-                    <h2>Due Soon</h2>
+                    <h2>Department Updates</h2>
                 </div>
             </div>
             <div class="list-stack">
-                {% for item in stats.due_soon %}
+                {% for item in stats.department_updates %}
                     <a class="list-row linked-row" href="{{ detail_paths[item.level].format(id=item.id) }}">
                         <span>{{ item.title }}</span>
-                        <strong>{{ item.due_date|long_date }}</strong>
+                        <small>{{ item.project_path }}</small>
                     </a>
                 {% else %}
-                    <p class="text-secondary mb-0">No upcoming due items.</p>
+                    <div class="empty-table">No recent department activity.</div>
                 {% endfor %}
             </div>
         </section>

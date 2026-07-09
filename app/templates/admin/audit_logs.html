@@ -3,26 +3,57 @@
 {% block title %}Audit Logs{% endblock %}
 
 {% block content %}
-<section class="table-panel">
-    <div class="section-heading">
-        <div>
-            <h1>Audit Logs</h1>
-        </div>
+<section class="admin-command-hero">
+    <div>
+        <span class="eyebrow">System Traceability</span>
+        <h1>Audit Logs</h1>
+        <p>Track what happened, who did it, when it happened, and which system entity was affected.</p>
     </div>
-    <div class="table-responsive">
+    <div class="hero-actions">
+        <a class="btn app-btn-primary" href="/admin/audit-logs/export?format=pdf{% if selected_actor_id %}&actor_id={{ selected_actor_id }}{% endif %}{% if selected_action %}&action={{ selected_action }}{% endif %}{% if selected_entity %}&entity={{ selected_entity }}{% endif %}{% if selected_logged_on %}&logged_on={{ selected_logged_on }}{% endif %}"><i class="bi bi-filetype-pdf"></i> PDF</a>
+        <a class="btn btn-outline-dark detail-action-button" href="/admin/audit-logs/export?format=xlsx{% if selected_actor_id %}&actor_id={{ selected_actor_id }}{% endif %}{% if selected_action %}&action={{ selected_action }}{% endif %}{% if selected_entity %}&entity={{ selected_entity }}{% endif %}{% if selected_logged_on %}&logged_on={{ selected_logged_on }}{% endif %}"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+        <a class="btn btn-outline-dark detail-action-button" href="/admin/audit-logs/export?format=csv{% if selected_actor_id %}&actor_id={{ selected_actor_id }}{% endif %}{% if selected_action %}&action={{ selected_action }}{% endif %}{% if selected_entity %}&entity={{ selected_entity }}{% endif %}{% if selected_logged_on %}&logged_on={{ selected_logged_on }}{% endif %}"><i class="bi bi-filetype-csv"></i> CSV</a>
+    </div>
+</section>
+
+<section class="table-panel mt-4">
+    <form class="filter-bar" method="get" action="/admin/audit-logs">
+        <input class="form-control" type="date" name="logged_on" value="{{ selected_logged_on }}">
+        <select class="form-select" name="actor_id">
+            <option value="">All users</option>
+            {% for actor in actors %}
+                <option value="{{ actor.id }}" {% if selected_actor_id == actor.id %}selected{% endif %}>{{ actor.full_name }}</option>
+            {% endfor %}
+        </select>
+        <select class="form-select" name="action">
+            <option value="">All actions</option>
+            {% for action_name in actions %}
+                <option value="{{ action_name }}" {% if selected_action == action_name %}selected{% endif %}>{{ action_name.replace('_', ' ').title() }}</option>
+            {% endfor %}
+        </select>
+        <select class="form-select" name="entity">
+            <option value="">All entities</option>
+            {% for entity_name in entities %}
+                <option value="{{ entity_name }}" {% if selected_entity == entity_name %}selected{% endif %}>{{ entity_name }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-outline-secondary" type="submit">Filter</button>
+    </form>
+
+    <div class="table-responsive mt-4">
         <table class="table enterprise-table align-middle">
-            <thead><tr><th>Action</th><th>Entity</th><th>Actor</th><th>Details</th><th>Time</th></tr></thead>
+            <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>
             <tbody>
                 {% for log in audit_logs %}
                     <tr>
-                        <td>{{ log.action.replace('objective', 'project').replace('workstream', 'milestone') }}</td>
-                        <td>{{ log.entity_type }} #{{ log.entity_id or "-" }}</td>
-                        <td>{{ log.actor.full_name if log.actor else "System" }}</td>
-                        <td><code>{{ log.details or {} }}</code></td>
                         <td class="date-cell">{{ log.created_at|long_datetime }}</td>
+                        <td>{{ log.actor.full_name if log.actor else "System" }}</td>
+                        <td>{{ log.action.replace('_', ' ').title() }}</td>
+                        <td>{{ log.entity_type }}{% if log.entity_id %} #{{ log.entity_id }}{% endif %}</td>
+                        <td><code>{{ log.details or {} }}</code></td>
                     </tr>
                 {% else %}
-                    <tr><td colspan="5" class="empty-table">No audit logs yet.</td></tr>
+                    <tr><td colspan="5" class="empty-table">No audit logs match the current filters.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

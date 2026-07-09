@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<section class="page-hero">
+    <div>
+        <h1>Settings</h1>
+    </div>
+</section>
+
+<section class="account-shell mt-4">
+    <article class="form-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Change Password</h2>
+            </div>
+        </div>
+        <form method="post" action="/change-password" class="stack-form">
+            <input class="form-control" type="password" name="current_password" placeholder="Current password" required>
+            <input class="form-control" type="password" name="new_password" placeholder="New password" minlength="8" data-password-rules required>
+            <button class="btn app-btn-primary align-self-start" type="submit">Update Password</button>
+        </form>
+    </article>
+
+    <article class="table-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Account Controls</h2>
+            </div>
+        </div>
+        <div class="account-grid">
+            <a class="owner-lock text-decoration-none" href="/profile"><span>Profile</span><strong>Review and update your account details</strong></a>
+            <a class="owner-lock text-decoration-none" href="/notifications"><span>Notifications</span><strong>Open your notification inbox</strong></a>
+            <div class="owner-lock"><span>System Role</span><strong>{{ current_user.display_role }}</strong></div>
+            <div class="owner-lock"><span>Designation</span><strong>{{ current_user.display_identity_line }}</strong></div>
+        </div>
+    </article>
+</section>
+{% endblock %}

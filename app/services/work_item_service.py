@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.orm import Session
 
+from app.models.team import Team
 from app.models.user import User
 from app.models.subtask import Subtask
 from app.models.task import Task
@@ -10,7 +11,7 @@ from app.repositories.user_repository import UserRepository
 from app.repositories.work_item_repository import WorkItemRepository
 from app.services.audit_service import AuditService
 from app.services.notification_service import NotificationService
-from app.utils.enums import TaskStatus, UserRole
+from app.utils.enums import DesignationScope, TaskStatus, UserRole
 from app.utils.work_item_levels import WorkItemLevel, WorkItemStatus
 from app.schemas.work_item import WorkItemCreate, WorkItemUpdate
 
@@ -30,9 +31,7 @@ class TaskAccessMixin:
         task = WorkItemRepository(db).get_by_id(task_id)
         if not task:
             raise ValueError("Task not found.")
-        if actor.role == UserRole.ADMIN:
-            return task
-        if actor.team_id and actor.team_id == task.team_id:
+        if WorkItemService(db)._can_view_item(actor, task):
             return task
         raise ValueError("You do not have access to this task.")
 
@@ -130,6 +129,48 @@ class WorkItemService:
         for user_id in recipients:
             self.notification_service.create(user_id=user_id, message=message, task_id=None)
 
+    def _can_view_team(self, actor: User, team: Team | None) -> bool:
+        if actor.role == UserRole.ADMIN:
+            return True
+        if actor.scope_level in {DesignationScope.SYSTEM_ADMINISTRATOR, DesignationScope.OPERATING_HEAD}:
+            return True
+        if team is None:
+            return False
+        if actor.team_id and team.id == actor.team_id:
+            return True
+        if actor.scope_level == DesignationScope.DIVISION_HEAD:
+            return bool(actor.division_id and team.department and team.department.division_id == actor.division_id)
+        if actor.scope_level == DesignationScope.DEPARTMENT_HEAD:
+            return bool(actor.department_id and team.department_id == actor.department_id)
+        return bool(
+            (actor.team_id and team.id == actor.team_id)
+            or (actor.department_id and team.department_id == actor.department_id)
+        )
+
+    def _can_view_user_scope(self, actor: User, user: User | None) -> bool:
+        if user is None:
+            return False
+        if actor.id == user.id:
+            return True
+        if actor.role == UserRole.ADMIN:
+            return True
+        if actor.scope_level in {DesignationScope.SYSTEM_ADMINISTRATOR, DesignationScope.OPERATING_HEAD}:
+            return True
+        if actor.scope_level == DesignationScope.DIVISION_HEAD:
+            return bool(actor.division_id and user.division_id == actor.division_id)
+        if actor.scope_level == DesignationScope.DEPARTMENT_HEAD:
+            return bool(actor.department_id and user.department_id == actor.department_id)
+        return bool(
+            (actor.team_id and user.team_id == actor.team_id)
+            or (actor.department_id and user.department_id == actor.department_id)
+            or actor.id == user.id
+        )
+
+    def _can_view_item(self, actor: User, item: WorkItem) -> bool:
+        if self._can_view_team(actor, item.team):
+            return True
+        return self._can_view_user_scope(actor, item.creator) or self._can_view_user_scope(actor, item.assignee)
+
     def get_item_or_raise(self, work_item_id: int) -> WorkItem:
         item = self.work_item_repo.get_by_id(work_item_id)
         if not item:
@@ -138,15 +179,13 @@ class WorkItemService:
 
     def get_accessible_work_item(self, actor: User, work_item_id: int) -> WorkItem:
         item = self.get_item_or_raise(work_item_id)
-        if actor.role == UserRole.ADMIN:
-            return item
-        if actor.team_id and actor.team_id == item.team_id:
+        if self._can_view_item(actor, item):
             return item
         raise ValueError("You do not have access to this work item.")
 
     def list_by_level(self, actor: User, *, level: WorkItemLevel, parent_id: int | None = None) -> list[WorkItem]:
-        team_id = None if actor.role == UserRole.ADMIN else actor.team_id
-        return self.work_item_repo.list_by_level(level=level, parent_id=parent_id, team_id=team_id)
+        items = self.work_item_repo.list_by_level(level=level, parent_id=parent_id)
+        return [item for item in items if self._can_view_item(actor, item)]
 
     def breadcrumb(self, item: WorkItem) -> list[WorkItem]:
         chain: list[WorkItem] = []
@@ -170,18 +209,10 @@ class WorkItemService:
         return parent
 
     def list_for_actor(self, actor: User) -> list[WorkItem]:
-        if actor.role == UserRole.ADMIN:
-            return self.work_item_repo.list_all()
-        if actor.team_id:
-            return self.work_item_repo.list_for_team(actor.team_id) if actor.team_id else []
-        return []
+        return [item for item in self.work_item_repo.list_all() if self._can_view_item(actor, item)]
 
     def list_tasks_for_actor(self, actor: User) -> list[WorkItem]:
-        if actor.role == UserRole.ADMIN:
-            return [item for item in self.work_item_repo.list_all() if item.level == WorkItemLevel.TASK]
-        if actor.team_id:
-            return [item for item in self.work_item_repo.list_for_team(actor.team_id) if item.level == WorkItemLevel.TASK]
-        return []
+        return [item for item in self.list_for_actor(actor) if item.level == WorkItemLevel.TASK]
 
     def list_assigned_to_actor(self, actor: User) -> list[WorkItem]:
         return self.work_item_repo.list_for_assignee(actor.id)
@@ -192,10 +223,10 @@ class WorkItemService:
     def can_edit_work_item(self, actor: User, item: WorkItem) -> bool:
         if actor.role == UserRole.ADMIN:
             return True
-        if actor.role == UserRole.MANAGER and actor.team_id == item.team_id:
+        if actor.role == UserRole.MANAGER and self._can_view_item(actor, item):
             return True
         if actor.role == UserRole.EMPLOYEE:
-            return actor.team_id == item.team_id and actor.id in {item.assigned_to_id, item.created_by_id}
+            return self._can_view_item(actor, item) and actor.id in {item.assigned_to_id, item.created_by_id}
         return False
 
     @staticmethod
@@ -210,7 +241,7 @@ class WorkItemService:
         return (
             actor.id == item.created_by_id
             and self.can_create_level(actor, item.level)
-            and (actor.role == UserRole.ADMIN or actor.team_id == item.team_id)
+            and (actor.role == UserRole.ADMIN or self._can_view_item(actor, item))
         )
 
     def _subtree_owned_by(self, actor: User, item: WorkItem) -> bool:
@@ -230,13 +261,11 @@ class WorkItemService:
             raise ValueError("Sub-tasks are no longer part of the active delivery workflow.")
         if actor.role not in {UserRole.MANAGER, UserRole.EMPLOYEE}:
             raise ValueError("You do not have permission to create work items.")
-        if actor.role == UserRole.MANAGER and payload.level == WorkItemLevel.OBJECTIVE and not actor.team_id:
-            raise ValueError("Managers must belong to a team before creating projects.")
         parent = self._validate_parent(payload.level, payload.parent_id)
-        if actor.role == UserRole.MANAGER and parent and parent.team_id != actor.team_id:
-            raise ValueError("Managers can create work only inside their own team.")
-        if actor.role == UserRole.EMPLOYEE and parent and parent.team_id != actor.team_id:
-            raise ValueError("Employees can create work only inside their own team.")
+        if actor.role == UserRole.MANAGER and parent and not self._can_view_item(actor, parent):
+            raise ValueError("Managers can create work only inside their visible scope.")
+        if actor.role == UserRole.EMPLOYEE and parent and not self._can_view_item(actor, parent):
+            raise ValueError("Employees can create work only inside their visible scope.")
         if payload.level == WorkItemLevel.OBJECTIVE and actor.role != UserRole.MANAGER:
             raise ValueError("Only managers can create projects.")
         assignee = actor
@@ -247,9 +276,9 @@ class WorkItemService:
             assigned_to_id=assignee.id if assignee else None,
             created_by_id=actor.id,
             team_id=(
-                actor.team_id
-                if actor.role in {UserRole.MANAGER, UserRole.EMPLOYEE}
-                else getattr(parent, "team_id", None) or getattr(assignee, "team_id", None)
+                getattr(parent, "team_id", None)
+                or actor.team_id
+                or getattr(assignee, "team_id", None)
             ),
             priority=payload.priority,
             due_date=payload.due_date,

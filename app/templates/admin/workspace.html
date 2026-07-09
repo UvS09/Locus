@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Workspace{% endblock %}
+
+{% block content %}
+<section class="admin-command-hero">
+    <div>
+        <span class="eyebrow">Operational Center</span>
+        <h1>Workspace</h1>
+        <p>Drill from objectives into workstreams, activities, tasks, and sub-tasks from one operational surface.</p>
+    </div>
+    <div class="hero-actions">
+        <a class="btn {% if view == 'table' %}app-btn-primary{% else %}btn-outline-dark detail-action-button{% endif %}" href="/admin/workspace?q={{ q }}&status={{ selected_status }}{% if selected_team_id %}&team_id={{ selected_team_id }}{% endif %}&view=table">Objective List</a>
+        <a class="btn {% if view == 'kanban' %}app-btn-primary{% else %}btn-outline-dark detail-action-button{% endif %}" href="/admin/workspace?q={{ q }}&status={{ selected_status }}{% if selected_team_id %}&team_id={{ selected_team_id }}{% endif %}&view=kanban">Task Kanban</a>
+    </div>
+</section>
+
+<nav class="detail-breadcrumbs mt-4">
+    <a href="/admin/dashboard">Dashboard</a>
+    <span>/</span>
+    <strong>Workspace</strong>
+</nav>
+
+<section class="admin-role-strip mt-4">
+    <article><span>Objectives</span><strong>{{ workspace.objectives|length }}</strong></article>
+    <article><span>Tasks</span><strong>{{ workspace.tasks|length }}</strong></article>
+    <article><span>Teams</span><strong>{{ workspace.teams|length }}</strong></article>
+</section>
+
+<section class="table-panel mt-4">
+    <form class="filter-bar" method="get" action="/admin/workspace">
+        <input class="form-control" type="search" name="q" value="{{ q }}" placeholder="Search objectives, tasks, owners, teams">
+        <select class="form-select" name="status">
+            <option value="">All statuses</option>
+            {% for work_status in work_item_statuses %}
+                <option value="{{ work_status.value }}" {% if selected_status == work_status.value %}selected{% endif %}>{{ work_status.value.replace('_', ' ') }}</option>
+            {% endfor %}
+        </select>
+        <select class="form-select" name="team_id">
+            <option value="">All teams</option>
+            {% for team in workspace.teams %}
+                <option value="{{ team.id }}" {% if selected_team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
+            {% endfor %}
+        </select>
+        <input type="hidden" name="view" value="{{ view }}">
+        <button class="btn btn-outline-secondary" type="submit">Filter</button>
+    </form>
+
+    {% if view == 'kanban' %}
+        <div class="board-shell mt-4">
+            {% for status_key, label in {'PENDING': 'To Do', 'IN_PROGRESS': 'In Progress', 'BLOCKED': 'Blocked', 'COMPLETED': 'Completed', 'CLOSED': 'Closed'}.items() %}
+                <div class="board-column">
+                    <div class="board-header">
+                        <strong>{{ label }}</strong>
+                        <span>{{ task_board[status_key]|length }}</span>
+                    </div>
+                    <div class="board-stack">
+                        {% for task in task_board[status_key] %}
+                            <a class="board-card" href="/tasks/{{ task.id }}">
+                                <h3>{{ task.title }}</h3>
+                                <p>{{ task.team.name if task.team else "No team" }}</p>
+                                <div class="card-tags">
+                                    <span class="priority-badge priority-{{ task.priority.value|lower }}">{{ task.priority.value }}</span>
+                                    <span class="muted-tag">{{ task.assignee.full_name if task.assignee else "Unassigned" }}</span>
+                                </div>
+                            </a>
+                        {% else %}
+                            <div class="board-empty">No tasks in this column.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="table-responsive mt-4">
+            <table class="table enterprise-table align-middle">
+                <thead>
+                    <tr>
+                        <th>Objective</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Progress</th>
+                        <th>Owner</th>
+                        <th>Team</th>
+                        <th>Due Date</th>
+                        <th>Drill Down</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for objective in objectives %}
+                        {% set objective_overdue = objective.due_date and objective.due_date < today and objective.status.value not in ['COMPLETED', 'CLOSED'] %}
+                        <tr>
+                            <td>
+                                <a class="table-title" href="/objectives/{{ objective.id }}">{{ objective.title }}</a>
+                                <div class="table-subtitle">{{ objective.description or "No description provided." }}</div>
+                            </td>
+                            <td><span class="status-badge {% if objective_overdue %}status-overdue{% else %}status-{{ objective.status.value|lower }}{% endif %}">{% if objective_overdue %}OVERDUE{% else %}{{ objective.status.value.replace('_', ' ') }}{% endif %}</span></td>
+                            <td><span class="priority-badge priority-{{ objective.priority.value|lower }}">{{ objective.priority.value }}</span></td>
+                            <td>
+                                <div class="progress-cell">
+                                    <strong>{{ objective.progress_percent }}%</strong>
+                                    <div class="progress compact-progress {% if objective.status.value == 'BLOCKED' %}progress-is-blocked{% endif %}">
+                                        <div class="progress-bar status-progress-{% if objective_overdue %}overdue{% else %}{{ objective.status.value|lower }}{% endif %}" style="width: {{ objective.progress_percent }}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ objective.assignee.full_name if objective.assignee else "Unassigned" }}</td>
+                            <td>{{ objective.team.name if objective.team else "-" }}</td>
+                            <td class="date-cell">{{ objective.due_date|long_date }}</td>
+                            <td><a class="btn btn-sm btn-outline-dark" href="/objectives/{{ objective.id }}">Open Objective</a></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="8" class="empty-table">No workspace items match the current filters.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

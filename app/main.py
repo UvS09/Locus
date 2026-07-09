@@ -1,3 +1,6 @@
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -14,11 +17,18 @@ from app.routes.root_routes import router as root_router
 from app.routes.task_routes import router as task_router
 
 settings = get_settings()
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if settings.init_db_on_startup:
+        init_db()
+    yield
 
 
 def create_application() -> FastAPI:
-    app = FastAPI(title=settings.app_name, debug=settings.app_debug)
-    init_db()
+    app = FastAPI(title=settings.app_name, debug=settings.app_debug, lifespan=lifespan)
     app.add_middleware(RequestLoggingMiddleware)
     app.include_router(root_router)
     app.include_router(auth_router)
@@ -28,7 +38,7 @@ def create_application() -> FastAPI:
     app.include_router(employee_router)
     app.include_router(task_router)
     app.include_router(notification_router)
-    app.mount("/static", StaticFiles(directory="app/static"), name="static")
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     return app
 
 

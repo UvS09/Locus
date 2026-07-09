@@ -7,7 +7,7 @@ from app.models.user import User
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import ChangePasswordRequest, LoginRequest
 from app.services.audit_service import AuditService
-from app.utils.security import hash_password, verify_password
+from app.utils.security import hash_password, validate_password_strength, verify_password
 
 settings = get_settings()
 
@@ -43,6 +43,7 @@ class AuthService:
     def change_password(self, user: User, payload: ChangePasswordRequest) -> None:
         if not verify_password(payload.current_password, user.password_hash):
             raise ValueError("Current password is incorrect.")
+        validate_password_strength(payload.new_password)
         user.password_hash = hash_password(payload.new_password)
         user.must_change_password = False
         self.audit_service.log_action(

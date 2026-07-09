@@ -1,5 +1,6 @@
 from datetime import date, datetime
-from urllib.parse import urlencode
+from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from fastapi import Request
 from fastapi.responses import RedirectResponse
@@ -10,7 +11,8 @@ from app.models.user import User
 from app.services.notification_service import NotificationService
 from app.utils.work_item_levels import WorkItemLevel
 
-templates = Jinja2Templates(directory="app/templates")
+TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 def _format_long_date(value: date | datetime | None) -> str:
@@ -72,5 +74,10 @@ def redirect_with_message(url: str, *, message: str | None = None, error: str | 
         params["message"] = message
     if error:
         params["error"] = error
-    target = f"{url}?{urlencode(params)}" if params else url
+    if not params:
+        return RedirectResponse(url, status_code=status_code)
+    split = urlsplit(url)
+    query = dict(parse_qsl(split.query, keep_blank_values=True))
+    query.update(params)
+    target = urlunsplit((split.scheme, split.netloc, split.path, urlencode(query), split.fragment))
     return RedirectResponse(target, status_code=status_code)

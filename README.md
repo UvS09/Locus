@@ -25,11 +25,33 @@ Locus is an internal HMSI work management application for tracking projects, mil
 
 ## Local Setup
 
+### macOS / Linux
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
+uvicorn app.main:app --reload
+```
+
+### Windows PowerShell
+
+```powershell
+py -3 -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+uvicorn app.main:app --reload
+```
+
+### Windows Command Prompt
+
+```bat
+py -3 -m venv .venv
+.venv\Scripts\activate.bat
+pip install -r requirements.txt
+copy .env.example .env
 uvicorn app.main:app --reload
 ```
 
@@ -61,6 +83,12 @@ After the first admin exists, user creation is handled from the Admin dashboard.
 .venv/bin/python -m pytest -q
 ```
 
+On Windows PowerShell:
+
+```powershell
+.venv\Scripts\python -m pytest -q
+```
+
 ## Docker
 
 ```bash
@@ -68,6 +96,29 @@ docker compose up --build
 ```
 
 The web app runs on port `8000`; PostgreSQL runs on port `5432`.
+
+## Deploying to Vercel
+
+This repository supports both local `uvicorn` usage and Vercel deployment from the same FastAPI app.
+
+Set these environment variables in Vercel:
+
+```text
+APP_ENV=production
+APP_DEBUG=false
+DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:PORT/DBNAME
+SECRET_KEY=replace-with-a-long-random-secret
+COOKIE_SECURE=true
+COOKIE_SAMESITE=lax
+INIT_DB_ON_STARTUP=true
+```
+
+Notes:
+
+- Use a managed PostgreSQL database. Do not use local SQLite on Vercel.
+- The Vercel entrypoint is `api/index.py`, which imports the same `app` object used by `uvicorn app.main:app`.
+- Static files and templates are loaded with absolute paths so they work in both environments.
+- Keep `INIT_DB_ON_STARTUP=true` if you want the app to create tables and run seed logic during cold starts. If you later switch fully to Alembic-managed migrations, you can set it to `false`.
 
 ## Key Files
 
@@ -81,3 +132,4 @@ The web app runs on port `8000`; PostgreSQL runs on port `5432`.
 - `app/templates/` - Jinja2 pages.
 - `app/static/` - CSS, JavaScript, and image assets.
 - `SYSTEM_DESIGN.md` - architecture and design overview.
+- `docs/DATA_FLOW.md` - end-to-end explanation of how data and control move through the app.

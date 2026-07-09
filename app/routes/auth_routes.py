@@ -103,7 +103,36 @@ async def signup(
 
 @router.get("/change-password", response_class=HTMLResponse)
 async def change_password_page(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db_session)):
-    return templates.TemplateResponse("auth/change_password.html", build_context(request, current_user=current_user, db=db))
+    return templates.TemplateResponse("auth/settings.html", build_context(request, current_user=current_user, db=db))
+
+
+@router.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db_session)):
+    return templates.TemplateResponse("auth/settings.html", build_context(request, current_user=current_user, db=db))
+
+
+@router.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db_session)):
+    return templates.TemplateResponse("auth/profile.html", build_context(request, current_user=current_user, db=db))
+
+
+@router.post("/profile")
+async def update_profile(
+    request: Request,
+    full_name: str = Form(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db_session),
+):
+    name = full_name.strip()
+    if len(name) < 2:
+        return templates.TemplateResponse(
+            "auth/profile.html",
+            build_context(request, current_user=current_user, db=db, error="Full name must be at least 2 characters."),
+            status_code=400,
+        )
+    current_user.full_name = name
+    db.commit()
+    return redirect_with_message("/profile", message="Profile updated.")
 
 
 @router.post("/change-password")
@@ -121,11 +150,11 @@ async def change_password(
             ChangePasswordRequest(current_password=current_password, new_password=new_password),
         )
         db.commit()
-        return redirect_with_message("/dashboard", message="Password changed successfully.")
+        return redirect_with_message("/settings", message="Password changed successfully.")
     except Exception as exc:
         db.rollback()
         return templates.TemplateResponse(
-            "auth/change_password.html",
+            "auth/settings.html",
             build_context(request, current_user=current_user, db=db, error=str(exc)),
             status_code=400,
         )

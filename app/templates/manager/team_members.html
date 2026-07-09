@@ -1,29 +1,90 @@
 {% extends "base.html" %}
 
-{% block title %}Team Members{% endblock %}
+{% block title %}Visible Members{% endblock %}
 
 {% block content %}
-<section class="table-panel">
+<section class="metrics-grid mt-3">
+    <article class="metric-card">
+        <span>Visible Members</span>
+        <strong>{{ members|length }}</strong>
+    </article>
+    <article class="metric-card">
+        <span>Division Heads</span>
+        <strong>{{ division_heads|length }}</strong>
+    </article>
+    <article class="metric-card">
+        <span>Departments</span>
+        <strong>{{ department_groups|length }}</strong>
+    </article>
+    <article class="metric-card">
+        <span>Active Members</span>
+        <strong>{{ members|selectattr('is_active')|list|length }}</strong>
+    </article>
+</section>
+
+<section class="table-panel mt-3">
     <div class="section-heading">
         <div>
-            <h1>Team Members</h1>
+            <h1>{{ scope_title }} Hierarchy</h1>
+            <p>Division heads, department heads, and team members in your selected scope.</p>
         </div>
     </div>
-    <div class="table-responsive">
-        <table class="table enterprise-table align-middle">
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
-            <tbody>
-                {% for employee in employees %}
-                    <tr>
-                        <td>{{ employee.full_name }}</td>
-                        <td>{{ employee.email }}</td>
-                        <td>{{ employee.display_role }}</td>
-                    </tr>
-                {% else %}
-                    <tr><td colspan="3" class="empty-table">No team members assigned.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+
+    {% if division_heads %}
+        <div class="hierarchy-leader-strip">
+            {% for leader in division_heads %}
+                <article class="hierarchy-leader-card">
+                    <strong>{{ leader.full_name }}</strong>
+                    <span>{{ leader.display_designation }}</span>
+                    <small>{{ leader.division.name if leader.division else leader.display_role }}</small>
+                </article>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="hierarchy-department-stack">
+        {% for group in department_groups %}
+            <article class="hierarchy-department-card">
+                <div class="hierarchy-department-head">
+                    <div>
+                        <h2>{{ group.department.name if group.department else "Unassigned Department" }}</h2>
+                        <p>{{ (group.heads|length) + (group.members|length) }} members in view</p>
+                    </div>
+                </div>
+
+                {% if group.heads %}
+                    <div class="hierarchy-role-block">
+                        <span class="hierarchy-role-label">Department Heads</span>
+                        <div class="hierarchy-member-grid">
+                            {% for member in group.heads %}
+                                <article class="hierarchy-member-card">
+                                    <strong>{{ member.full_name }}</strong>
+                                    <span>{{ member.display_designation }}</span>
+                                    <small>{{ member.team.name if member.team else member.display_role }}</small>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="hierarchy-role-block">
+                    <span class="hierarchy-role-label">Team Members</span>
+                    <div class="hierarchy-member-grid">
+                        {% for member in group.members %}
+                            <article class="hierarchy-member-card">
+                                <strong>{{ member.full_name }}</strong>
+                                <span>{{ member.display_designation }}</span>
+                                <small>{{ member.team.name if member.team else member.display_role }}</small>
+                            </article>
+                        {% else %}
+                            <div class="empty-table">No team members listed in this department yet.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </article>
+        {% else %}
+            <div class="empty-table">No members visible in this scope.</div>
+        {% endfor %}
     </div>
 </section>
 {% endblock %}
