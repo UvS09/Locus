@@ -18,7 +18,7 @@ class Designation(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    scope_level: Mapped[DesignationScope] = mapped_column(Enum(DesignationScope, name="designation_scope"), nullable=False)
+    scope_level: Mapped[DesignationScope] = mapped_column(Enum(DesignationScope, name="designation_scope", create_type=False), nullable=False)
     rank: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)

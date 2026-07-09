@@ -44,6 +44,23 @@ def _ensure_column(connection, inspector, table_name: str, column_name: str, ddl
     return True
 
 
+def _ensure_postgres_enum(connection, type_name: str, values: list[str]) -> None:
+    enum_values = ", ".join(f"'{value}'" for value in values)
+    connection.execute(
+        text(
+            f"""
+            DO $$
+            BEGIN
+                CREATE TYPE {type_name} AS ENUM ({enum_values});
+            EXCEPTION
+                WHEN duplicate_object THEN NULL;
+            END
+            $$;
+            """
+        )
+    )
+
+
 def init_db() -> None:
     from app.models import audit_log, comment, department, designation, division, notification, role, subtask, task, team, user, work_item  # noqa: F401
     from app.models.department import Department
@@ -53,8 +70,20 @@ def init_db() -> None:
     from app.models.user import User
     from app.services.work_item_service import WorkItemService
     from app.models.work_item import WorkItem
-    from app.utils.enums import DesignationScope, UserRole
+    from app.utils.enums import DesignationScope, TaskPriority, TaskStatus, UserRole
     from app.utils.work_item_levels import WorkItemStatus
+    from app.utils.work_item_levels import WorkItemLevel
+
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as connection:
+            _ensure_postgres_enum(connection, "designation_scope", [item.value for item in DesignationScope])
+            _ensure_postgres_enum(connection, "user_role", [item.value for item in UserRole])
+            _ensure_postgres_enum(connection, "role_access_level", [item.value for item in UserRole])
+            _ensure_postgres_enum(connection, "task_status", [item.value for item in TaskStatus])
+            _ensure_postgres_enum(connection, "task_priority", [item.value for item in TaskPriority])
+            _ensure_postgres_enum(connection, "work_item_level", [item.value for item in WorkItemLevel])
+            _ensure_postgres_enum(connection, "work_item_status", [item.value for item in WorkItemStatus])
+            _ensure_postgres_enum(connection, "work_item_priority", [item.value for item in TaskPriority])
 
     Base.metadata.create_all(bind=engine)
     hierarchy_columns_added = False

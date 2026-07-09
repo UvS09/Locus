@@ -19,7 +19,7 @@ class Role(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    access_level: Mapped[UserRole] = mapped_column(Enum(UserRole, name="role_access_level"), nullable=False)
+    access_level: Mapped[UserRole] = mapped_column(Enum(UserRole, name="role_access_level", create_type=False), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
 
     users: Mapped[list["User"]] = relationship("User", back_populates="custom_role")
