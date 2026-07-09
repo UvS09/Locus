@@ -18,7 +18,7 @@ settings = get_settings()
 
 @router.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, db: Session = Depends(get_db_session)) -> HTMLResponse:
-    can_signup = (not settings.is_production) and (not UserService(db).has_any_users())
+    can_signup = not UserService(db).has_any_users()
     return templates.TemplateResponse("auth/login.html", build_context(request, db=db, can_signup=can_signup))
 
 
@@ -48,7 +48,7 @@ async def login(
                 db=db,
                 error=str(exc),
                 form_email=email,
-                can_signup=(not settings.is_production) and (not UserService(db).has_any_users()),
+                can_signup=not UserService(db).has_any_users(),
             ),
             status_code=400,
         )
@@ -63,7 +63,7 @@ async def logout() -> RedirectResponse:
 
 @router.get("/signup", response_class=HTMLResponse)
 async def signup_page(request: Request, db: Session = Depends(get_db_session)):
-    can_signup = (not settings.is_production) and (not UserService(db).has_any_users())
+    can_signup = not UserService(db).has_any_users()
     if not can_signup:
         return redirect_with_message("/login", error="Signup is disabled. Use an existing account.")
     return templates.TemplateResponse("auth/signup.html", build_context(request, db=db, can_signup=can_signup))
@@ -93,7 +93,7 @@ async def signup(
                 request,
                 db=db,
                 error=str(exc),
-                can_signup=(not settings.is_production) and (not user_service.has_any_users()),
+                can_signup=not user_service.has_any_users(),
                 form_full_name=full_name,
                 form_email=email,
             ),
