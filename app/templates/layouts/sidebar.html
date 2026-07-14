@@ -29,15 +29,8 @@
     </form>
 
     <nav class="sidebar-nav" aria-label="Primary">
-        {% if presentation_mode %}
-            <a class="sidebar-link {% if current_path == '/presentation' %}is-active{% endif %}" href="/presentation">
-                <i class="bi bi-easel2"></i>
-                <span>Presentation</span>
-                <span class="sidebar-badge">LIVE</span>
-            </a>
-        {% endif %}
         {% if current_user.role == "ADMIN" %}
-            <a class="sidebar-link {% if current_path.startswith('/admin/dashboard') %}is-active{% endif %}" href="/admin/dashboard">
+            <a class="sidebar-link {% if current_path.startswith('/admin/dashboard') or current_path == '/presentation' %}is-active{% endif %}" href="/dashboard">
                 <i class="bi bi-grid-1x2"></i>
                 <span>Dashboard</span>
             </a>
@@ -65,7 +58,7 @@
                 {% endif %}
             </a>
         {% else %}
-            <a class="sidebar-link {% if current_path == '/dashboard' %}is-active{% endif %}" href="/dashboard">
+            <a class="sidebar-link {% if current_path == '/dashboard' or current_path == '/presentation' %}is-active{% endif %}" href="/dashboard">
                 <i class="bi bi-grid-1x2"></i>
                 <span>Dashboard</span>
             </a>

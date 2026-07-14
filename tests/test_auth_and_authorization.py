@@ -185,11 +185,11 @@ def test_presentation_mode_is_toggleable_without_changing_users():
 
     presentation = client.get("/dashboard", follow_redirects=True)
     assert presentation.status_code == 200
-    assert "LIVE DEMO PORTFOLIO" in presentation.text
-    assert "EV Market Readiness Program" in presentation.text
-    assert "Demo data only" in presentation.text
-    assert "Sample delivery team" in presentation.text
-    assert "Aarav Mehta" in presentation.text
+    assert "Active initiatives" in presentation.text
+    assert "Incident Response Automation" in presentation.text
+    assert "Presentation data" in presentation.text
+    assert "Application Run team" in presentation.text
+    assert "Priya Menon" in presentation.text
 
     disabled = client.post("/presentation-mode", data={"enabled": "off"}, follow_redirects=False)
     assert disabled.status_code == 303

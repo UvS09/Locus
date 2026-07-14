@@ -20,18 +20,6 @@
     </div>
 
     <div class="topbar-tools">
-        <form class="presentation-toggle-form" method="post" action="/presentation-mode">
-            <input type="hidden" name="enabled" value="{% if presentation_mode %}off{% else %}on{% endif %}">
-            <button class="presentation-toggle {% if presentation_mode %}is-active{% endif %}" type="submit" aria-pressed="{{ 'true' if presentation_mode else 'false' }}" title="{{ 'Exit presentation mode' if presentation_mode else 'Show a demo portfolio without changing real data' }}">
-                <span class="presentation-toggle-icon"><i class="bi bi-easel2"></i></span>
-                <span class="presentation-toggle-copy">
-                    <strong>Presentation</strong>
-                    <small>{{ 'Demo data on' if presentation_mode else 'Mode off' }}</small>
-                </span>
-                <span class="presentation-switch" aria-hidden="true"><span></span></span>
-            </button>
-        </form>
-
         <form class="topbar-search" method="get" action="{% if current_user.role == 'ADMIN' %}/admin/workspace{% else %}/objectives{% endif %}">
             <i class="bi bi-search"></i>
             <input type="search" name="q" value="{{ request.query_params.get('q', '') }}" placeholder="{% if current_user.role == 'ADMIN' %}Search objectives, tasks, teams{% else %}Search projects, milestones, activities, tasks{% endif %}">
