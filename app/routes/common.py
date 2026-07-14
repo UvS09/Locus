@@ -59,6 +59,7 @@ def build_context(
     return {
         "request": request,
         "current_user": current_user,
+        "presentation_mode": request.cookies.get("locus_presentation_mode") == "on",
         "unread_count": unread_count,
         "nav_notifications": notifications,
         "today": date.today(),

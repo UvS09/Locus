@@ -159,6 +159,49 @@ def test_manager_login_dashboard_renders_after_redirect():
     assert response.status_code == 200
     assert "Welcome back" in response.text
     assert "Manager One" in response.text
+    assert "Presentation mode" in response.text
+    assert 'action="/presentation-mode"' in response.text
+
+
+def test_presentation_mode_is_toggleable_without_changing_users():
+    db = SessionLocal()
+    user_snapshot = sorted(
+        (user.id, user.email, user.full_name, user.role.value, user.is_active)
+        for user in db.query(User).all()
+    )
+    db.close()
+
+    client = TestClient(app)
+    client.post(
+        "/login",
+        data={"email": "manager@honda.hmsi.in", "password": "Password123"},
+        follow_redirects=False,
+    )
+
+    enabled = client.post("/presentation-mode", data={"enabled": "on"}, follow_redirects=False)
+    assert enabled.status_code == 303
+    assert enabled.headers["location"] == "/presentation"
+    assert "locus_presentation_mode=on" in enabled.headers["set-cookie"]
+
+    presentation = client.get("/dashboard", follow_redirects=True)
+    assert presentation.status_code == 200
+    assert "LIVE DEMO PORTFOLIO" in presentation.text
+    assert "EV Market Readiness Program" in presentation.text
+    assert "Demo data only" in presentation.text
+    assert "Sample delivery team" in presentation.text
+    assert "Aarav Mehta" in presentation.text
+
+    disabled = client.post("/presentation-mode", data={"enabled": "off"}, follow_redirects=False)
+    assert disabled.status_code == 303
+    assert disabled.headers["location"] == "/dashboard"
+
+    db = SessionLocal()
+    unchanged_snapshot = sorted(
+        (user.id, user.email, user.full_name, user.role.value, user.is_active)
+        for user in db.query(User).all()
+    )
+    db.close()
+    assert unchanged_snapshot == user_snapshot
 
 
 def test_redirect_with_message_preserves_existing_query_string():

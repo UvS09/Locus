@@ -16,7 +16,26 @@
         </button>
     </div>
 
+    <form class="sidebar-presentation-control {% if presentation_mode %}is-active{% endif %}" method="post" action="/presentation-mode">
+        <input type="hidden" name="enabled" value="{% if presentation_mode %}off{% else %}on{% endif %}">
+        <button type="submit" aria-pressed="{{ 'true' if presentation_mode else 'false' }}">
+            <span class="sidebar-presentation-icon"><i class="bi bi-easel2"></i></span>
+            <span class="sidebar-presentation-copy">
+                <strong>Presentation mode</strong>
+                <small>{{ 'Sample workspace is on' if presentation_mode else 'Show sample workspace' }}</small>
+            </span>
+            <span class="sidebar-presentation-switch" aria-hidden="true"><i></i></span>
+        </button>
+    </form>
+
     <nav class="sidebar-nav" aria-label="Primary">
+        {% if presentation_mode %}
+            <a class="sidebar-link {% if current_path == '/presentation' %}is-active{% endif %}" href="/presentation">
+                <i class="bi bi-easel2"></i>
+                <span>Presentation</span>
+                <span class="sidebar-badge">LIVE</span>
+            </a>
+        {% endif %}
         {% if current_user.role == "ADMIN" %}
             <a class="sidebar-link {% if current_path.startswith('/admin/dashboard') %}is-active{% endif %}" href="/admin/dashboard">
                 <i class="bi bi-grid-1x2"></i>
@@ -50,15 +69,15 @@
                 <i class="bi bi-grid-1x2"></i>
                 <span>Dashboard</span>
             </a>
-            <a class="sidebar-link {% if current_path.startswith('/manager/tasks') or current_path.startswith('/employee/tasks') or current_path.startswith('/tasks/') %}is-active{% endif %}" href="{% if current_user.role == 'EMPLOYEE' %}/employee/tasks{% else %}/manager/tasks{% endif %}">
+            <a class="sidebar-link {% if current_path.startswith('/manager/tasks') or current_path.startswith('/employee/tasks') or current_path.startswith('/tasks/') %}is-active{% endif %}" href="{% if presentation_mode %}/presentation#milestones{% elif current_user.role == 'EMPLOYEE' %}/employee/tasks{% else %}/manager/tasks{% endif %}">
                 <i class="bi bi-list-task"></i>
                 <span>Your Work</span>
             </a>
-            <a class="sidebar-link {% if current_path.startswith('/objectives') or current_path.startswith('/workstreams') or current_path.startswith('/activities') or current_path == '/create' %}is-active{% endif %}" href="/objectives">
+            <a class="sidebar-link {% if current_path.startswith('/objectives') or current_path.startswith('/workstreams') or current_path.startswith('/activities') or current_path == '/create' %}is-active{% endif %}" href="{% if presentation_mode %}/presentation#portfolio{% else %}/objectives{% endif %}">
                 <i class="bi bi-bullseye"></i>
                 <span>Projects</span>
             </a>
-            <a class="sidebar-link {% if current_path.startswith('/reports') or current_path.startswith('/manager/reports') or current_path.startswith('/employee/analytics') %}is-active{% endif %}" href="{% if current_user.role == 'MANAGER' %}/manager/reports{% else %}/employee/analytics{% endif %}">
+            <a class="sidebar-link {% if current_path.startswith('/reports') or current_path.startswith('/manager/reports') or current_path.startswith('/employee/analytics') %}is-active{% endif %}" href="{% if presentation_mode %}/presentation#analytics{% elif current_user.role == 'MANAGER' %}/manager/reports{% else %}/employee/analytics{% endif %}">
                 <i class="bi bi-bar-chart"></i>
                 <span>{% if current_user.role == 'EMPLOYEE' %}Analytics{% else %}Reports{% endif %}</span>
             </a>
